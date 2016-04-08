@@ -1,0 +1,678 @@
+#
+#  configure.in - hplip autoconf input file
+# 
+#  (c) 2004-2007 Copyright HP Development Company, LP
+# 
+# exit status:
+#   0 = ok
+#   1 = error
+#   2 = no libusb
+#   3 = no cups-devel
+#   4 = no libnetsnmp
+#   5 = no netsnmp-devel
+#   6 = no python-devel
+#   7 = no pthread-devel
+#   8 = no ppdev-devel
+#   9 = no libcups
+#   10 = no libm
+#   11 = no libusb-devel
+#   12 = no sane-backends-devel
+#   13 = no libdbus-1 support
+#   14 = no dbus-devel support
+#   15 = fax requries dbus support
+#
+#   102 = no libjpeg
+#   103 = no jpeg-devel
+#   104 = no libdl
+
+#AC_PREREQ(2.59)
+AC_INIT([HP Linux Imaging and Printing], [3.16.3], [3.16.3], [hplip])
+#AM_INIT_AUTOMAKE([1.9 foreign])
+AM_INIT_AUTOMAKE
+AC_DISABLE_STATIC
+
+# Checks for programs.
+AC_PROG_CXX
+AC_PROG_CC
+AC_PROG_INSTALL
+AC_PROG_LIBTOOL
+
+# Checks for required libraries, don't set global -lpthread, -lm, -ljpeg, ... here, set in Makefile.
+AC_CHECK_LIB([pthread], [pthread_create], [LIBS="$LIBS"], [AC_MSG_ERROR([cannot find libpthread support], 7)])
+AC_CHECK_LIB([m], [pow], [LIBS="$LIBS"], [AC_MSG_ERROR([cannot find libm math support], 10)])
+AC_CHECK_LIB([jpeg], [jpeg_set_defaults],[LIBS="$LIBS"], [AC_MSG_ERROR(["cannot find libjpeg support"], 102)])
+AC_CHECK_LIB([dl], [dlopen], [LIBS="$LIBS" AC_DEFINE([HAVE_LIBDL])], [AC_MSG_ERROR(["cannot find libdl support"], 104)])
+
+# Checks for required header files.
+AC_CHECK_HEADERS(pthread.h,, [AC_MSG_ERROR([cannot find pthread-devel support], 7)])
+AC_CHECK_HEADERS(jpeglib.h,, [AC_MSG_ERROR([cannot find libjpeg-devel support], 103)])
+
+# Checks for typedefs, structures, and compiler characteristics.
+AC_C_BIGENDIAN(,[APDK_ENDIAN_FLAG="-DAPDK_LITTLE_ENDIAN"])
+
+# Autoconf-style header tests for APDK
+cat >prnt/hpijs/auto-include.h <<EOFH
+#ifdef HAVE_INTTYPES_H
+#include <inttypes.h>
+#endif
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif
+#ifdef HAVE_MACHINE_TYPES_H
+#include <machine/types.h>
+#endif
+EOFH
+AC_CHECK_TYPES([uint32_t], [APDK_AUTO_INCLUDE_FLAG="-DAPDK_AUTO_INCLUDE"],, [#include "prnt/hpijs/auto-include.h"])
+
+AC_MSG_CHECKING("for platform-dependencies")
+darwin_build="no"
+case "$host" in
+   *-darwin*)
+      AC_MSG_RESULT("using Mac OS X platform.h")
+      cat >prnt/hpijs/platform.h <<EOF
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/malloc.h>
+#include <memory.h>
+#include <string.h>
+#include <stdio.h>
+#include <math.h>
+EOF
+      darwin_build="yes"
+      ;;
+
+     *)
+      AC_MSG_RESULT("using Default platform.h")
+      cat >prnt/hpijs/platform.h <<EOF
+#include <stdlib.h>
+#include <memory.h>
+#include <string.h>
+#include <stdio.h>
+#include <math.h>
+EOF
+      ;;
+esac
+AM_CONDITIONAL(DARWIN_BUILD, test x$darwin_build = xyes)
+
+AC_MSG_CHECKING([for documentation build])
+AC_ARG_ENABLE(doc_build,
+  [  --enable-doc-build     enable documentation build (default=yes)],
+  doc_build=$enableval, doc_build=yes)
+if test "$doc_build" = "yes"; then
+   AC_MSG_RESULT(yes)
+else
+   AC_MSG_RESULT(no)
+fi
+AM_CONDITIONAL(DOC_BUILD, test x$doc_build = xyes)
+
+AC_MSG_CHECKING([for hpijs only build])
+AC_ARG_ENABLE(hpijs_only_build,
+  [  --enable-hpijs-only-build     enable hpijs only build (default=yes)(Deprecated)],
+  hpijs_only_build=$enableval, hpijs_only_build=no)
+if test "$hpijs_only_build" = "yes"; then
+   AC_MSG_RESULT(yes)
+   epm_full=\#
+   epm_lite=\#
+   epm_hpcups_only=\#
+   epm_print_only_exclude=\#
+   epm_hpijs_only=
+   AC_MSG_WARN(HPIJS build is deprecated. Feature can be used as is. Fixes or updates will not be provided)
+else
+   AC_MSG_RESULT(no)
+   epm_hpijs_only=\#
+   AC_DEFINE(HAVE_LIBHPIP) 
+fi
+AM_CONDITIONAL(HPIJS_ONLY_BUILD, test x$hpijs_only_build = xyes)
+
+AC_MSG_CHECKING([for lite build])
+AC_ARG_ENABLE(lite_build,
+  [  --enable-lite-build     enable lite build, print & scan only (default=no)],
+  lite_build=$enableval, lite_build=no)
+if test "$lite_build" = "yes"; then
+   AC_MSG_RESULT(yes)
+   epm_full=\#
+   epm_hpcups_only=\#
+   epm_print_only_exclude=
+   epm_lite=
+else
+   AC_MSG_RESULT(no)
+fi
+AM_CONDITIONAL(LITE_BUILD, test x$lite_build = xyes)
+
+AC_MSG_CHECKING([for hpcups only build])
+AC_ARG_ENABLE(hpcups_only_build,
+  [  --enable-hpcups-only-build     enable hpcups only build, print only (default=no)],
+  hpcups_only_build=$enableval, hpcups_only_build=no)
+if test "$hpcups_only_build" = "yes"; then
+   AC_MSG_RESULT(yes)
+   epm_full=\#
+   epm_lite=\#
+   epm_hpcups_only=
+   epm_print_only_exclude=\#
+else
+   AC_MSG_RESULT(no)
+fi
+AM_CONDITIONAL(HPCUPS_ONLY_BUILD, test x$hpcups_only_build = xyes)
+
+AM_CONDITIONAL(HPLIP_BUILD, test x$hpcups_only_build = xno && test x$hpijs_only_build = xno)
+if test "$hpijs_only_build" = "no" && test "$hpcups_only_build" = "no"; then
+   AC_DEFINE(HAVE_LIBHPIP) 
+fi
+
+if test "$lite_build" = "no" && test "$hpcups_only_build" = "no" && test "$hpijs_only_build" = "no"; then
+   epm_full=
+   epm_lite=\#
+   epm_hpcups_only=\#
+   epm_print_only_exclude=
+fi
+AM_CONDITIONAL(FULL_BUILD, test x$hpcups_only_build = xno && test x$lite_build = xno && test x$hpijs_only_build = xno)
+
+AC_MSG_CHECKING([for hpijs install])
+AC_ARG_ENABLE(hpijs_install,
+  [  --enable-hpijs-install     enable hpijs install (default=no)(Deprecated)],
+  hpijs_install=$enableval, hpijs_install=no)
+if test "$hpijs_install" = "yes"; then
+   AC_MSG_RESULT(yes)
+   epm_hpijs_install=yes
+   AC_MSG_WARN(HPIJS is deprecated. Feature can be used as is. Fixes or updates will not be provided)
+else
+   AC_MSG_RESULT(no)
+fi
+AM_CONDITIONAL(HPIJS_INSTALL, test x$hpijs_install = xyes)
+
+AC_MSG_CHECKING([for hpcups install])
+AC_ARG_ENABLE(hpcups_install,
+  [  --enable-hpcups-install     enable hpcups install (default=yes)],
+  hpcups_install=$enableval, hpcups_install=yes)
+if test "$hpcups_install" = "yes" && test "$hpijs_only_build" = "no"; then
+   AC_MSG_RESULT(yes)
+   epm_hpcups_install=yes
+else
+   AC_MSG_RESULT(no)
+fi
+AM_CONDITIONAL(HPCUPS_INSTALL, test x$hpcups_install = xyes && test x$hpijs_only_build = xno)
+
+AC_MSG_CHECKING([for new hpcups install])
+AC_ARG_ENABLE(new_hpcups,
+  [  --enable-new-hpcups     enable new hpcups install (default=no)],
+  new_hpcups=$enableval, new_hpcups=no)
+if test "$new_hpcups" = "yes"; then
+   AC_MSG_RESULT(yes)
+else
+   AC_MSG_RESULT(no)
+fi
+AM_CONDITIONAL(NEW_HPCUPS, test x$new_hpcups = xyes)
+
+AC_MSG_CHECKING([for network build])
+AC_ARG_ENABLE(network_build,
+  [  --enable-network-build    enable network build (default=yes)],
+  network_build=$enableval, network_build=yes)
+if test "$network_build" = "yes"; then
+   AC_MSG_RESULT(yes)
+else
+   AC_MSG_RESULT(no)
+fi
+AM_CONDITIONAL(NETWORK_BUILD, test x$network_build = xyes)
+
+AC_MSG_CHECKING([for parallel port build])
+AC_ARG_ENABLE(pp_build,
+  [  --enable-pp-build    enable parallel port build (default=no)(Deprecated) ],
+  pp_build=$enableval, pp_build=no)
+if test "$pp_build" = "yes"; then
+   AC_MSG_RESULT(yes)
+   AC_MSG_WARN(Parallel Port support deprecated. Feature can be used as is. Fixes or updates will not be provided)
+   AC_DEFINE(HAVE_PPORT) 
+else
+   AC_MSG_RESULT(no)
+fi
+   
+AC_MSG_CHECKING([for scanner build])
+AC_ARG_ENABLE(scan_build,
+  [  --enable-scan-build    enable scanner build (default=yes)],
+  scan_build=$enableval, scan_build=yes)
+if test "$scan_build" = "yes"; then
+   AC_MSG_RESULT(yes)
+   epm_scan=
+else
+   AC_MSG_RESULT(no)
+   epm_scan=\#
+fi
+AM_CONDITIONAL(SCAN_BUILD, test x$scan_build = xyes)
+
+AC_MSG_CHECKING([for gui build])
+AC_ARG_ENABLE(gui_build,
+  [  --enable-gui-build    enable gui build (default=yes)],
+  gui_build=$enableval, gui_build=yes)
+if test "$gui_build" = "yes"; then
+   AC_MSG_RESULT(yes)
+else
+   AC_MSG_RESULT(no)
+fi
+AM_CONDITIONAL(GUI_BUILD, test x$gui_build = xyes)
+
+AC_MSG_CHECKING([for fax build])
+AC_ARG_ENABLE(fax_build,
+  [  --enable-fax-build    enable fax build (default=yes)],
+  fax_build=$enableval, fax_build=yes)
+if test "$fax_build" = "yes"; then
+   AC_MSG_RESULT(yes)
+else
+   AC_MSG_RESULT(no)
+fi
+AM_CONDITIONAL(FAX_BUILD, test x$fax_build = xyes)
+
+#AppArmor Changes
+AC_MSG_CHECKING([for apparmor profile])
+AC_ARG_ENABLE(apparmor_build,
+  [  --enable-apparmor_build    enable apparmor build (default=no)],
+  apparmor_build=$enableval, apparmor_build=no)
+if test "$apparmor_build" = "yes"; then
+   if test -d /etc/apparmor.d/; then
+      AC_MSG_RESULT(yes)
+   else
+      AC_MSG_ERROR([cannot find apparmor support])
+   fi
+else
+   AC_MSG_RESULT(no)
+fi
+AM_CONDITIONAL(APPARMOR_BUILD, test x$apparmor_build = xyes)
+
+
+AC_MSG_CHECKING([for dbus build])
+AC_ARG_ENABLE(dbus_build,
+  [  --enable-dbus-build    enable dbus build (default=yes)],
+  dbus_build=$enableval, dbus_build=yes)
+if test "$dbus_build" = "yes"; then
+   AC_MSG_RESULT(yes)
+else
+   AC_MSG_RESULT(no)
+fi
+
+AC_MSG_CHECKING([for cups 1.1.x build])
+AC_ARG_ENABLE(cups11_build,
+  [  --enable-cups11-build    enable cups 1.1.x build (default=no)],
+  cups11_build=$enableval, cups11_build=no)
+if test "$cups11_build" = "yes"; then
+   AC_MSG_RESULT(yes)
+   AC_DEFINE(HAVE_CUPS11) 
+else
+   AC_MSG_RESULT(no)
+fi
+
+AC_MSG_CHECKING([for udev sysfs enable rules])
+AC_ARG_ENABLE(udev_sysfs_rules,
+  [  --enable-udev_sysfs_rules    Use SYSFS attribute instead of ATTR/ATTRS attribute in udev rules(default=no)],
+  udev_sysfs_rules=$enableval, udev_sysfs_rules=no)
+if test "$udev_sysfs_rules" = "yes"; then
+   AC_MSG_RESULT(yes)
+else
+   AC_MSG_RESULT(no)
+fi
+AM_CONDITIONAL(UDEV_SYSFS_RULES, test x$udev_sysfs_rules = xyes)
+
+AC_MSG_CHECKING([for shadow build])
+AC_ARG_ENABLE(shadow_build,
+  [  --enable-shadow-build    enable shadow build (default=no)],
+  shadow_build=$enableval, shadow_build=no)
+if test "$shadow_build" = "yes"; then
+   AC_MSG_RESULT(yes)
+else
+   AC_MSG_RESULT(no)
+fi
+AM_CONDITIONAL(SHADOW_BUILD, test x$shadow_build = xyes)
+
+AC_MSG_CHECKING([for libusb-0.1 build])
+AC_ARG_ENABLE(libusb01_build,
+  [  --enable-libusb01_build    Use libusb-0.1 instead of libusb-1.0 (default=no. i.e. libusb-1.0)],
+  libusb01_build=$enableval, libusb01_build=no)
+if test "$libusb01_build" = "yes"; then
+   AC_MSG_RESULT(yes)
+   AC_DEFINE(HAVE_LIBUSB01) 
+else
+   AC_MSG_RESULT(no)
+fi
+AM_CONDITIONAL(LIBUSB01_BUILD, test x$libusb01_build = xyes)
+
+AC_ARG_WITH(cupsbackenddir, AC_HELP_STRING([--with-cupsbackenddir=DIR], [set cups backend install directory [default=/usr/lib/cups/backend]]),
+   cupsbackenddir=$withval, cupsbackenddir="/usr/lib/cups/backend")
+
+AC_ARG_WITH(cupsfilterdir, AC_HELP_STRING([--with-cupsfilterdir=DIR], [set cups filter install directory [default=/usr/lib/cups/filter]]),
+   cupsfilterdir=$withval, cupsfilterdir="/usr/lib/cups/filter")
+
+AC_ARG_WITH(icondir, AC_HELP_STRING([--with-icondir=DIR], [set hplip.desktop install directory [default=/usr/share/applications]]),
+   icondir=$withval, icondir="/usr/share/applications")
+
+AC_ARG_WITH(systraydir, AC_HELP_STRING([--with-systraydir=DIR], [set hplip-systray.desktop install directory [default=/etc/xdg/autostart]]),
+   systraydir=$withval, systraydir="/etc/xdg/autostart")
+
+AC_ARG_WITH(hpppddir, AC_HELP_STRING([--with-hpppddir=DIR], [set hp ppd install directory [default=datadir/ppd/HP]]),
+   hpppddir=$withval, hpppddir="$datadir/ppd/HP")
+   
+# AppArmor Changes
+AC_ARG_WITH(apparmordir, AC_HELP_STRING([--with-apparmordir=DIR], [set apparmor profile install directory [default=/etc/apparmor.d]]),
+   apparmordir=$withval, apparmordir="/etc/apparmor.d")
+
+if test -f "/usr/share/cups/mime/mime.types"; then
+   abs_mimedir="/usr/share/cups/mime/"
+else
+   abs_mimedir="/etc/cups/"
+fi
+AC_ARG_WITH(mimedir, AC_HELP_STRING([--with-mimedir=DIR], [set cups mime.types location [default=abs_mimedir]]),
+   mimedir=$withval, mimedir="$abs_mimedir")
+
+AC_ARG_WITH(docdir, AC_HELP_STRING([--with-docdir=DIR], [set hplip documentation directory [default=datadir/doc]]),
+   hpdocdir=$withval, hpdocdir="$datadir/doc/hplip-$VERSION")
+
+AC_ARG_WITH(htmldir, AC_HELP_STRING([--with-htmldir=DIR], [set hplip html documentation directory [default=datadir/doc]]),
+   hphtmldir=$withval, hphtmldir="$datadir/doc/hplip-$VERSION")
+
+AC_MSG_CHECKING([for foomatic ppd install])
+AC_ARG_ENABLE(foomatic_ppd_install,
+  [  --enable-foomatic-ppd-install    enable foomatic static ppd install (default=no)(Deprecated), uses hpppddir],
+  foomatic_ppd_install=$enableval, foomatic_ppd_install=no)
+if test $foomatic_ppd_install = yes; then
+   AC_MSG_RESULT(yes)
+   epm_foomatic_ppd_install=yes
+   AC_MSG_WARN(foomatic static ppd install is deprecated. Feature can be used as is. Fixes or updates will not be provided)
+else
+   AC_MSG_RESULT(no)
+fi
+AM_CONDITIONAL(FOOMATIC_PPD_INSTALL, test x$foomatic_ppd_install = xyes)
+
+AC_ARG_WITH(drvdir, AC_HELP_STRING([--with-drvdir=DIR], [set cups drv install directory [default=datadir/cups/drv/hp]]),
+   drvdir=$withval, drvdir="$datadir/cups/drv/hp")
+
+AC_MSG_CHECKING([for foomatic drv install])
+AC_ARG_ENABLE(foomatic_drv_install,
+  [  --enable-foomatic-drv-install    enable foomatic dynamic ppd install (default=no)(Deprecated), uses drvdir and hpppddir],
+  foomatic_drv_install=$enableval, foomatic_drv_install=no)
+if test $foomatic_drv_install = yes; then
+   AC_MSG_RESULT(yes)
+   epm_foomatic_drv_install=yes
+   AC_MSG_WARN(foomatic dynamic ppd install is deprecated. Feature can be used as is. Fixes or updates will not be provided)
+else
+   AC_MSG_RESULT(no)
+fi
+AM_CONDITIONAL(FOOMATIC_DRV_INSTALL, test x$foomatic_drv_install = xyes)
+
+AC_MSG_CHECKING([for cups drv install])
+AC_ARG_ENABLE(cups_drv_install,
+  [  --enable-cups-drv-install    enable cups dynamic ppd install (default=yes), uses drvdir and hpppddir],
+  cups_drv_install=$enableval, cups_drv_install=yes)
+if test $cups_drv_install = yes && test $hpijs_only_build = no; then
+   AC_MSG_RESULT(yes)
+   epm_cups_drv_install=yes
+else
+   AC_MSG_RESULT(no)
+fi
+AM_CONDITIONAL(CUPS_DRV_INSTALL, test x$cups_drv_install = xyes && test x$hpijs_only_build = xno)
+
+AC_MSG_CHECKING([for cups ppd install])
+AC_ARG_ENABLE(cups_ppd_install,
+  [  --enable-cups-ppd-install    enable cups static ppd install (default=no), uses hpppddir],
+  cups_ppd_install=$enableval, cups_ppd_install=no)
+if test $cups_ppd_install = yes && test $hpijs_only_build = no; then
+   AC_MSG_RESULT(yes)
+   epm_cups_ppd_install=yes
+else
+   AC_MSG_RESULT(no)
+fi
+AM_CONDITIONAL(CUPS_PPD_INSTALL, test x$cups_ppd_install = xyes && test x$hpijs_only_build = xno)
+
+AC_MSG_CHECKING([for foomatic-rip-hplip install])
+AC_ARG_ENABLE(foomatic_rip_hplip_install,
+  [  --enable-foomatic-rip-hplip-install    enable foomatic-rip-hplip install (default=no)(Deprecated), uses cupsfilterdir],
+  foomatic_rip_hplip_install=$enableval, foomatic_rip_hplip_install=no)
+if test "$foomatic_rip_hplip_install" = "yes"; then
+   AC_MSG_RESULT(yes)
+   foomatic_filter="foomatic-rip-hplip"
+   epm_foomatic_rip_hplip_install=yes
+   AC_MSG_WARN(foomatic-rip-hplip install is deprecated. Feature can be used as is. Fixes or updates will not be provided)
+else
+   AC_MSG_RESULT(no)
+   foomatic_filter="foomatic-rip"
+fi
+AM_CONDITIONAL(RIP_INSTALL, test x$foomatic_rip_hplip_install = xyes)
+
+AC_MSG_CHECKING([for qt4])
+AC_ARG_ENABLE(qt4,
+  [  --enable-qt4    enable qt4 (default=yes)],
+  qt4=$enableval, qt4=yes)
+if test "$qt4" = "yes"; then
+   AC_MSG_RESULT(yes)
+else
+   AC_MSG_RESULT(no)
+fi
+AM_CONDITIONAL(QT4_INSTALL, test x$qt4 = xyes)
+
+AC_MSG_CHECKING([for qt3])
+AC_ARG_ENABLE(qt3,
+  [  --enable-qt3    enable qt3 (default=no)],
+  qt3=$enableval, qt3=no)
+if test "$qt3" = "yes"; then
+   AC_MSG_RESULT(yes)
+else
+   AC_MSG_RESULT(no)
+fi
+AM_CONDITIONAL(QT3_INSTALL, test x$qt3 = xyes)
+
+if test "$gui_build" = "no"; then
+   qt3=no
+   qt4=no
+fi
+
+epm_qt3=\#
+epm_qt4=\#
+if test "$hpcups_only_build" = "no" && test "$hpijs_only_build" = "no"; then
+if test "$qt3" = "yes" && test "$qt4" = "no"; then
+   ui_toolkit=qt3
+   epm_qt3=
+elif test "$qt4" = "yes"; then
+   ui_toolkit=qt4
+   epm_qt4=
+else
+   ui_toolkit=no
+fi
+fi
+
+AC_MSG_CHECKING([for policykit])
+AC_ARG_ENABLE(policykit,
+  [  --enable-policykit    enable PolicyKit (default=no)],
+  policykit=$enableval, policykit=no)
+if test "$policykit" = "yes"; then
+   AC_MSG_RESULT(yes)
+else
+   AC_MSG_RESULT(no)
+fi
+AM_CONDITIONAL(POLICYKIT_INSTALL, test x$policykit = xyes)
+
+# Determine where the PolicyKit policy file goes
+if test "$policykit" = "yes"; then
+   if test -d /usr/share/polkit-1; then
+      policykit_dir=/usr/share/polkit-1/actions
+   elif test -d /usr/share/PolicyKit; then
+      policykit_dir=/usr/share/PolicyKit/policy
+   else
+      policykit_dir=/usr/share/PolicyKit/policy
+   fi
+else
+   policykit_dir=
+fi
+
+AC_MSG_CHECKING(for host machine platform)
+machine=`uname -m`
+if test "$machine" = "x86_32" || test "$machine" = "i686"; then
+    platform="x86_32"
+elif test "$machine" = "x86_64"; then
+    platform="x86_64"
+elif test "$machine" = "ppc"; then
+    platform="ppc"
+else
+    platform="unsupport"
+fi
+AC_MSG_RESULT($platform)
+
+# Check conditional packages.
+
+if test "$hpijs_only_build" = "no" && test "$network_build" = "yes" && test "$hpcups_only_build" = "no"; then
+#   AC_CHECK_LIB([crypto], [CRYPTO_free], [LIBS="$LIBS"], [AC_MSG_ERROR([cannot find net-snmp support (or --disable-network-build)], 4)])
+#   AC_CHECK_LIB([netsnmp], [snmp_timeout], [LIBS="$LIBS" AC_DEFINE([HAVE_LIBNETSNMP])], [AC_MSG_ERROR([cannot find net-snmp support (or --disable-network-build)], 4)])
+#   AC_CHECK_HEADERS(net-snmp/net-snmp-config.h,, [AC_MSG_ERROR([cannot find net-snmp-devel support (or --disable-network-build)], 5)])
+
+   old_LIBS="$LIBS"
+   AC_CHECK_LIB([crypto], [CRYPTO_free],, [AC_MSG_ERROR([cannot find net-snmp support (or --disable-network-build)], 4)])
+   AC_CHECK_LIB([netsnmp], [snmp_timeout], [LIBS="$old_LIBS" AC_DEFINE([HAVE_LIBNETSNMP]) SNMPLIB="netsnmp"], check_ucd=yes)
+if test "$check_ucd" = "yes"; then
+   AC_CHECK_LIB([snmp], [snmp_timeout], [LIBS="$old_LIBS" AC_DEFINE([HAVE_LIBNETSNMP]) AC_DEFINE([HAVE_UCDSNMP]) SNMPLIB="snmp"],
+          [AC_MSG_ERROR([cannot find net/ucd-snmp support (or --disable-network-build)], 4)])
+   AC_CHECK_HEADERS(ucd-snmp/ucd-snmp-config.h,, [AC_MSG_ERROR([cannot find ucd-snmp-devel support (or --disable-network-build)], 5)])
+else
+   AC_CHECK_HEADERS(net-snmp/net-snmp-config.h,, [AC_MSG_ERROR([cannot find net-snmp-devel support (or --disable-network-build)], 5)])
+fi
+fi
+
+if test "$hpijs_only_build" = "no" && test "$pp_build" = "yes" && test "$hpcups_only_build" = "no"; then
+   AC_CHECK_HEADERS(linux/ppdev.h, ,[AC_MSG_ERROR([cannot find ppdev-devel support (or --disable-pp-build)], 8)])
+fi
+
+if test "$hpijs_only_build" = "no" && test "$hpcups_only_build" = "no"; then
+   AC_CHECK_LIB([cups], [cupsDoFileRequest], [LIBS="$LIBS"], [AC_MSG_ERROR([cannot find libcups support], 9)])
+   AC_CHECK_HEADERS(cups/cups.h, ,[AC_MSG_ERROR([cannot find cups-devel support], 3)])
+   if test "$libusb01_build" = "yes"; then
+      AC_CHECK_LIB([usb], [usb_init], [LIBS="$LIBS"], [AC_MSG_ERROR([cannot find libusb support], 2)])
+      AC_CHECK_HEADERS(usb.h, ,[AC_MSG_ERROR([cannot find libusb-devel support], 11)])
+   else
+      AC_CHECK_LIB([usb-1.0], [libusb_init], [LIBS="$LIBS"], [AC_MSG_ERROR([cannot find libusb 1.0 support], 2)])
+      AC_CHECK_HEADERS(libusb-1.0/libusb.h, ,[AC_MSG_ERROR([cannot find libusb-1.0-devel support], 11)])
+   fi
+fi
+
+if test "$hpijs_only_build" = "no" && test "$lite_build" = "no" && test "$hpcups_only_build" = "no"; then
+   AC_ARG_VAR([PYTHON], [Python interpreter/compiler command])
+   AM_PATH_PYTHON([2.2])
+   AC_MSG_CHECKING([for path to Python.h])
+   PYTHONINCLUDEDIR=`$PYTHON -c "from distutils.sysconfig import get_python_inc; print (get_python_inc());"`
+   AC_MSG_RESULT("using $PYTHONINCLUDEDIR ....  python${PYTHON_VERSION}/Python.h")
+   AC_ARG_VAR(PYTHONINCLUDEDIR, [path to Python.h C header file])
+   AC_CHECK_HEADERS([python${PYTHON_VERSION}/Python.h python${PYTHON_VERSION}mu/Python.h python${PYTHON_VERSION}m/Python.h ],
+          [FOUND_HEADER=yes; break;])
+   AS_IF([test "x$FOUND_HEADER" != "xyes"],
+          [AC_MSG_ERROR([cannot find python-devel support], 6)])
+fi
+
+if test "$hpijs_only_build" = "no" && test "$scan_build" = "yes" && test "$hpcups_only_build" = "no"; then
+   AC_CHECK_LIB([sane], [sane_open], [LIBS="$LIBS"], [AC_MSG_ERROR([cannot find sane-backends-devel support (or --disable-scan-build)], 12)])
+fi
+
+# The PKG_CHECK_MODULES macro requires the pkgconfig package (pkg-config). Otherwise you get a strange shell script error
+# "syntax error near upexpected token: DBUS".
+if test "$hpijs_only_build" = "no" && test "$lite_build" = "no" && test "$hpcups_only_build" = "no" && test "$dbus_build" = "yes"; then
+#   PKG_CHECK_MODULES(DBUS, [dbus-1 >= 1.0.0, dbus-glib-1 >= 0.61],,[AC_MSG_ERROR([cannot find dbus-devel support: $DBUS_PKG_ERRORS], 14)])
+   PKG_CHECK_MODULES([DBUS], [dbus-1 >= 1.0.0],,[AC_MSG_ERROR([cannot find dbus-devel support: $DBUS_PKG_ERRORS], 14)])
+   AC_CHECK_LIB([dbus-1], [dbus_connection_open], [LIBS="$LIBS" AC_DEFINE([HAVE_DBUS])], [AC_MSG_ERROR([cannot find libdbus support], 13)])
+fi
+
+if test "$hpijs_only_build" = "no" && test "$lite_build" = "no" && test "$hpcups_only_build" = "no" && test "$fax_build" = "yes" && test "$dbus_build" = "no"; then
+   AC_MSG_ERROR([fax requires dbus support], 15)
+fi
+
+# AC_DEFINE_DIR([DATADIR], [datadir])
+# Copyright © 2006 Stepan Kasal  <kasal@ucw.cz>
+# Copyright © 2006 Andreas Schwab <schwab@suse.de>
+# Copyright © 2006 Guido U. Draheim <guidod@gmx.de>
+# Copyright © 2006 Alexandre Oliva
+# Copying and distribution of this file, with or without modification, are permitted in any medium without
+# royalty provided the copyright notice and this notice are preserved.
+AC_DEFUN([AC_DEFINE_DIR], [
+  prefix_NONE=
+  exec_prefix_NONE=
+  test "x$prefix" = xNONE && prefix_NONE=yes && prefix=$ac_default_prefix
+  test "x$exec_prefix" = xNONE && exec_prefix_NONE=yes && exec_prefix=$prefix
+dnl In Autoconf 2.60, ${datadir} refers to ${datarootdir}, which in turn
+dnl refers to ${prefix}.  Thus we have to use `eval' twice.
+  eval ac_define_dir="\"[$]$2\""
+  eval ac_define_dir="\"$ac_define_dir\""
+  $1="$ac_define_dir"
+  test "$prefix_NONE" && prefix=NONE
+  test "$exec_prefix_NONE" && exec_prefix=NONE
+])
+
+AC_DEFINE_DIR([abs_datadir], [datadir])
+AC_DEFINE_DIR([abs_sbindir], [sbindir])
+AC_DEFINE_DIR([abs_hpppddir], [hpppddir])
+AC_DEFINE_DIR([abs_docdir], [hpdocdir])
+AC_DEFINE_DIR([abs_htmldir], [hphtmldir])
+abs_ppddir=${abs_hpppddir%/*}
+AC_DEFINE_DIR([abs_drvdir], [drvdir])
+
+AC_SUBST(abs_datadir)
+AC_SUBST(abs_sbindir)
+AC_SUBST(abs_hpppddir)
+AC_SUBST(abs_docdir)
+AC_SUBST(abs_htmldir)
+AC_SUBST(abs_ppddir)
+AC_SUBST(abs_drvdir)
+AC_SUBST(abs_mimedir)
+
+# AppArmor Changes
+AC_SUBST(apparmordir)
+AC_SUBST(apparmor_build)
+AC_SUBST(mimedir)
+AC_SUBST(icondir)
+AC_SUBST(systraydir)
+AC_SUBST(cupsbackenddir)
+AC_SUBST(cupsfilterdir)
+AC_SUBST(hpppddir)
+AC_SUBST(hpdocdir)
+AC_SUBST(hphtmldir)
+AC_SUBST(drvdir)
+AC_SUBST(network_build)
+AC_SUBST(pp_build)
+AC_SUBST(gui_build)
+AC_SUBST(scan_build)
+AC_SUBST(fax_build)
+AC_SUBST(dbus_build)
+AC_SUBST(cups11_build)
+AC_SUBST(foomatic_drv_install)
+AC_SUBST(foomatic_ppd_install)
+AC_SUBST(foomatic_rip_hplip_install)
+AC_SUBST(foomatic_filter)
+AC_SUBST(cups_ppd_install)
+AC_SUBST(cups_drv_install)
+AC_SUBST(hpijs_install)
+AC_SUBST(hpcups_install)
+AC_SUBST(doc_build)
+AC_SUBST(shadow_build)
+AC_SUBST(libusb01_build)
+AC_SUBST(APDK_ENDIAN_FLAG)
+AC_SUBST(APDK_AUTO_INCLUDE_FLAG)
+AC_SUBST(ui_toolkit)
+AC_SUBST(platform)
+AC_SUBST(qt3)
+AC_SUBST(qt4)
+AC_SUBST(epm_foomatic_rip_hplip_install)
+AC_SUBST(epm_foomatic_ppd_install)
+AC_SUBST(epm_cups_ppd_install)
+AC_SUBST(epm_foomatic_drv_install)
+AC_SUBST(epm_cups_drv_install)
+AC_SUBST(epm_hpijs_install)
+AC_SUBST(epm_hpcups_install)
+AC_SUBST(epm_qt4)
+AC_SUBST(epm_qt3)
+AC_SUBST(epm_full)
+AC_SUBST(epm_lite)
+AC_SUBST(epm_hpcups_only)
+AC_SUBST(epm_hpijs_only)
+AC_SUBST(epm_print_only_exclude)
+AC_SUBST(epm_scan)
+AC_SUBST(policykit)
+AC_SUBST(policykit_dir)
+AC_SUBST(hpijs_only_build)
+AC_SUBST(lite_build)
+AC_SUBST(hpcups_only_build)
+AC_SUBST(SNMPLIB)
+AC_SUBST(prefix)
+AC_SUBST(udev_sysfs_rules)
+
+AC_CONFIG_FILES(Makefile hplip.conf hplip.desktop hplip-systray.desktop prnt/drv/hpijs.drv prnt/drv/hpcups.drv hplip.list data/policykit/com.hp.hplip.service)
+AC_OUTPUT

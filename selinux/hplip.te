@@ -1,0 +1,62 @@
+module hplip 1.0;
+
+require {
+	type hplip_t;
+        type bin_t;
+	type hplip_exec_t;
+	type hplip_etc_t;
+	type cupsd_t;
+	type urandom_device_t;
+	type cupsd_etc_t;
+	type cupsd_exec_t;
+	# type cupsd_var_lib_t;
+	# type passwd_file_t;
+        type home_root_t;
+	type setfiles_t;
+	type fs_t;
+	type devlog_t;
+	type proc_t;
+	type print_spool_t;
+	type user_home_t;
+	type user_home_dir_t;
+	type system_dbusd_t;
+	type system_dbusd_var_run_t;
+	type unconfined_t;
+	# type unconfined_service_t;
+	type ldconfig_exec_t;
+	type usr_t;
+	type tmp_t;
+	type rpm_var_lib_t;
+        type snmpd_var_lib_t;
+	type chkpwd_t;
+	class lnk_file { relabelto read };
+        class dir { add_name open read lock  ioctl search write remove_name add_name getattr relabelto create setattr };
+	class file { setattr write append rename link unlink create getattr execute read execute open ioctl execute_no_trans entrypoint lock relabelto relabelfrom};
+	class fifo_file { read write create unlink open ioctl getattr };
+	class process { transition siginh noatsecure rlimitinh sigchld };
+	class filesystem { associate };
+	class chr_file { open read open getattr };
+	class unix_dgram_socket { create connect getopt setopt };
+	class capability { dac_override net_admin };
+	class dbus { send_msg };
+	class unix_stream_socket { connectto };
+	class sock_file { write };
+}
+
+type_transition cupsd_t usr_t:file bin_t;
+#allow cupsd_t usr_t:dir { read getattr lock search ioctl add_name remove_name write };
+allow cupsd_t bin_t:file { create open getattr setattr read write append rename link unlink ioctl lock };
+allow cupsd_t user_home_t:dir { create open search getattr read write add_name remove_name };
+allow cupsd_t user_home_t:file { create open getattr read write lock };
+allow cupsd_t user_home_dir_t:dir { search getattr read write };
+#allow cupsd_t rpm_var_lib_t:dir { getattr search read write };
+#allow cupsd_t rpm_var_lib_t:file { getattr read write getattr open lock };
+allow cupsd_t self:capability net_admin;
+allow cupsd_t user_home_t:fifo_file { create read write open unlink };
+#allow system_dbusd_t unconfined_service_t:process { rlimitinh siginh noatsecure };
+allow cupsd_t chkpwd_t:process { rlimitinh siginh noatsecure };
+
+# Requied for RHEL
+allow cupsd_t snmpd_var_lib_t:dir { write };
+allow hplip_t home_root_t:dir { search };
+allow hplip_t unconfined_t:dbus { send_msg };

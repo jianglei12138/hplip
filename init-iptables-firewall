@@ -1,0 +1,17 @@
+#! /bin/bash
+
+conffile="/etc/sysconfig/iptables"
+
+iptables -L | egrep -q '427|svrloc'
+if [ $? -ne 0 ]; then
+    iptables -I INPUT 4 -p udp --sport 427 -j ACCEPT
+    iptables-save >$conffile
+fi
+
+iptables -L | egrep -q '5353|mdns'
+if [ $? -ne 0 ]; then
+    iptables -I INPUT 4 -p udp --sport 5353 -j ACCEPT
+    iptables-save >$conffile
+fi
+
+exit 0

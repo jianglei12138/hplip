@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=com.hp.hplip
+Exec=@prefix@/bin/hp-pkservice
+User=root

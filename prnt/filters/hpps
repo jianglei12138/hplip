@@ -1,0 +1,358 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+# (c) Copyright 2003-2015 HP Development Company, L.P.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
+#
+# Author: Gaurav Sood, Sanjay Kumar
+#
+
+__version__ = '1.1'
+__title__ =  'PostScript Finishing Filter (hpps)'
+__doc__ = "CUPS filter that implements job storage (secure printing), Job Accounting and Born On Date (BOD) features on specific capable printers."
+
+# StdLib
+import sys
+import getopt
+import os.path
+import os
+import syslog
+import time
+import tempfile
+import subprocess
+import time
+PY3 = sys.version_info[0] == 3
+if PY3:
+    import configparser
+else:
+    import ConfigParser as configparser
+
+CUPS_FILTER_OK = 0
+CUPS_FILTER_FAILED = 1 
+
+input_fd = 0
+output_fd = 1
+
+job_id = 0
+pid = os.getpid()
+config_file = '/etc/hp/hplip.conf'
+home_dir = ''
+
+
+def bug(m):
+    log.stderr("ERROR: %s" % m)
+
+def msg(m):
+    log.stderr("INFO: %s" % m)
+
+if os.path.exists(config_file):
+    config = configparser.ConfigParser()
+    config.read(config_file)
+
+    try:
+        home_dir = config.get('dirs', 'home')
+    except:
+        bug("Error setting home directory: home= under [dirs] not found.")
+        sys.exit(CUPS_FILTER_FAILED)
+else:
+    bug("Error setting home directory: /etc/hp/hplip.conf not found")
+    sys.exit(CUPS_FILTER_FAILED)
+
+if not home_dir or not os.path.exists(home_dir):
+    bug("Error setting home directory: Home directory %s not found." % home_dir)
+    sys.exit(CUPS_FILTER_FAILED)
+
+sys.path.insert(0, home_dir)
+os.chdir(home_dir)
+
+
+# HPLIP
+try:
+    from base.g import *
+    from base.codes import *
+    from base import device
+    from base import utils
+    from prnt import cups
+    from base.sixext import to_bytes_utf8, to_string_utf8
+except ImportError as e:
+    bug("Error importing HPLIP modules:%s %s\n" % (pid, e))
+    sys.exit(CUPS_FILTER_FAILED)
+
+
+def usage(typ='text'):
+    if typ == 'text':
+        utils.log_title(__title__, __version__)
+
+    utils.format_text(USAGE, typ, title=__title__, crumb='pscfilter')
+    sys.exit(CUPS_FILTER_OK)
+
+
+try:
+    opts, args = getopt.getopt(sys.argv[1:], 'l:hg', ['level=', 'help', 'help-rest', 'help-man'])
+ 
+except getopt.GetoptError:
+    usage()
+
+
+for o, a in opts:
+
+    if o in ('-l', '--logging'):
+        log_level = a.lower().strip()
+        log.set_level(log_level)
+
+    elif o == '-g':
+        log.set_level('debug')
+
+    elif o in ('-h', '--help'):
+        usage()
+
+    elif o == '--help-rest':
+        usage('rest')
+
+    elif o == '--help-man':
+        usage('man')
+
+
+# CUPS provided environment
+try:
+    device_uri = os.environ['DEVICE_URI']
+    printer_name = os.environ['PRINTER']
+    ppd_file = os.environ['PPD']
+except KeyError:
+    bug("Improper environment: Must be run by CUPS.")
+    sys.exit(CUPS_FILTER_FAILED)
+
+
+try:
+    job_id, username, title, copies, options = args[0:5]
+    job_id = int(job_id)
+except IndexError:
+    bug("Invalid command line: invalid arguments.")
+    sys.exit(CUPS_FILTER_FAILED)
+
+START_JOB = b"\x1b%-12345X@PJL JOBNAME="
+UEL = b"@PJL ENTER LANGUAGE=POSTSCRIPT\x0a"
+END_JOB = b"\x1b%-12345X@PJL EOJ\x0a\x1b%-12345X"
+
+#output_fd = os.open("/tmp/PSC.out", os.O_WRONLY | os.O_CREAT)
+
+os.write(output_fd, START_JOB)
+os.write(output_fd, to_bytes_utf8("hplip_%s_%s\x0a" % (username, job_id)))
+
+opts = {}
+for opt in options.split():
+    try:
+        o, v = opt.split('=')
+    except ValueError:
+        continue
+    else:
+        opts[o] = v
+
+
+# --------------------Secure Printing---------------------
+# Embeds private job PJL's into the print stream
+# ----------------------------------------------------------    
+    
+if 'HPPinPrnt' in options and 'noHPPinPrnt' not in options:
+    
+
+    os.write(output_fd, b"@PJL SET HOLD=ON\x0a")
+    os.write(output_fd, b"@PJL SET HOLDTYPE=PRIVATE\x0a")
+
+    secpin = ""
+    szKeyInitials = ['HPFIDigit', 'HPSEDigit', 'HPTHDigit', 'HPFTDigit']    # Defined in Printer PPD
+    for x in szKeyInitials:
+        try:
+            secpin = secpin + opts[x]
+        except KeyError:
+            secpin = secpin + '0'
+
+    os.write(output_fd, to_bytes_utf8('@PJL SET HOLDKEY="%s"\x0a' % secpin))
+
+os.write(output_fd, to_bytes_utf8('@PJL SET USERNAME="%s"\x0a' % username))
+os.write(output_fd, to_bytes_utf8('@PJL SET JOBNAME="%s"\x0a' % title))
+#os.write(output_fd, to_bytes_utf8('@PJL SET COPIES="%s"\x0a' % copies))
+    
+#----------------Job Accouting----------------------------
+# Embeds the job accouting (1-8) PJL's into print stream
+# -----------------------------------------------------
+
+try:
+    ppd_str = to_string_utf8(open(ppd_file, 'rb').read())
+except IOError:
+    bug("Unabel to read PPD File")
+    sys.exit(CUPS_FILTER_FAILED)
+
+key_list = [x for x in ['HPAccountingInfo', 'HPBOD', 'HPPJLEconoMode', 'HPPJLEconoMode2',  'HPPJLOutputMode', 'HPPJLDryTime', 
+                        'HPPJLSaturation', 'HPPJLInkBleed', 'HPPJLColorAsGray'] if x in ppd_str]
+
+if 'HPAccountingInfo' in key_list:
+    p = subprocess.Popen(['hostname', '-s'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    system_name , err = p.communicate()
+    if system_name == '':
+        system_name = 'unknown_system_name'
+    p = subprocess.Popen(['hostname', '-d'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    domain_name, err = p.communicate() 
+    if domain_name == '':
+        domain_name = 'unknown_domain_name'
+
+    os.write(output_fd, to_bytes_utf8('@PJL SET JOBATTR=\"JobAcct1=%s\"\x0a' % username))
+    os.write(output_fd, to_bytes_utf8('@PJL SET JOBATTR=\"JobAcct2=%s\"\x0a' % system_name.rstrip(b'\n')))
+    os.write(output_fd, to_bytes_utf8('@PJL SET JOBATTR=\"JobAcct3=%s\"\x0a' % domain_name.rstrip(b'\n')))
+    os.write(output_fd, to_bytes_utf8('@PJL SET JOBATTR=\"JobAcct4=%s\"\x0a' % time.strftime("%Y%m%d%I%M%S", time.localtime())))
+    os.write(output_fd, to_bytes_utf8('@PJL SET JOBATTR=\"JobAcct5=%s\"\x0a' % opts['job-uuid']))
+    os.write(output_fd, to_bytes_utf8('@PJL SET JOBATTR=\"JobAcct6=%s\"\x0a' % "HP Linux Printing"))
+    os.write(output_fd, to_bytes_utf8('@PJL SET JOBATTR=\"JobAcct7=%s\"\x0a' % "HP Linux Printing"))
+    os.write(output_fd, to_bytes_utf8('@PJL SET JOBATTR=\"JobAcct8=%s\"\x0a' % username))
+
+# -------------------------Born On Date ----------------------------
+# Embeds the born on date PJL's in to print stream. Uses GMT Time Stamp
+# Based upon the "BornOnDate_PJL_DMINFO_PJL_TIMESTAMP.doc
+# -----------------------------------------------------------------
+
+if 'HPBOD' in key_list:
+    BOD_fixed = "0400040101020D10100115"  # HEX value of the time stamp OID
+    BOD_time = time.strftime("%Y%m%d%I%M%S", time.gmtime()) # Timestamp GMT
+    BOD_Var = ''  
+    for x in BOD_time:
+        BOD_Var = BOD_Var + hex(ord(x))[2:]
+    os.write(output_fd, to_bytes_utf8('@PJL DMINFO ASCIIHEX=\"%s%s\"\x0A' % (BOD_fixed, BOD_Var)))
+
+# -------------------------Other Features ----------------------------
+if 'HPPJLEconoMode' in key_list:
+    if 'HPPJLEconoMode' in options and 'noHPPJLEconoMode' not in options:
+        os.write(output_fd, b"@PJL SET ECONOMODE=ON\x0a")
+    else:
+        os.write(output_fd, b"@PJL SET ECONOMODE=OFF\x0a")
+
+    os.write(output_fd, b"@PJL SET RESOLUTION=600\x0a")
+    os.write(output_fd, b"@PJL SET BITSPERPIXEL=2\x0a")
+
+
+if 'HPPJLEconoMode2' in key_list:
+    try:
+        if opts['HPPJLEconoMode2'] == 'yes' or opts['HPPJLEconoMode2'] == 'on':
+            os.write(output_fd, b"@PJL SET ECONOMODE=ON\x0a")
+        elif opts['HPPJLEconoMode2'] == 'no' or opts['HPPJLEconoMode2'] == 'off':
+            os.write(output_fd, b"@PJL SET ECONOMODE=OFF\x0a")
+
+        os.write(output_fd, b"@PJL SET RESOLUTION=600\x0a")
+        os.write(output_fd, b"@PJL SET BITSPERPIXEL=1\x0a")
+
+    except:
+        pass
+
+if 'HPPJLPrintQuality' in key_list:
+    try:
+        if opts['HPPJLPrintQuality'] == 'FastRes1200':
+            os.write(output_fd, b"@PJL SET RESOLUTION=600<0A>@PJL SET BITSPERPIXEL=2<0A>")
+        elif opts['HPPJLPrintQuality'] == '600dpi':
+            os.write(output_fd, b"@PJL SET RESOLUTION=600<0A>@PJL SET BITSPERPIXEL=1<0A>")
+        elif opts['HPPJLPrintQuality'] == 'ProRes1200':
+            os.write(output_fd, b"@PJL SET RESOLUTION=1200<0A>@PJL SET BITSPERPIXEL=1<0A>")   
+    except:
+        os.write(output_fd, b"@PJL SET RESOLUTION=600<0A>@PJL SET BITSPERPIXEL=2<0A>")
+             
+
+if 'HPPJLOutputMode' in key_list:
+    try:
+        if opts['HPPJLOutputMode'] == 'GeneralOffice':
+            os.write(output_fd, b'@PJL SET PRINTQUALITY=DRAFT\x0a') 
+        elif opts['HPPJLOutputMode'] == 'Professional':
+            os.write(output_fd, b'@PJL SET PRINTQUALITY=NORMAL\x0a') 
+        elif opts['HPPJLOutputMode'] == 'Presentation':
+            os.write(output_fd, b'@PJL SET PRINTQUALITY=BEST\x0a') 
+        if opts['HPPJLOutputMode'] == 'MaximumDPI':
+            os.write(output_fd, b'@PJL SET PRINTQUALITY=MAX\x0a') 
+    except:
+        os.write(output_fd, b'@PJL SET PRINTQUALITY=NORMAL\x0a')
+
+if 'HPPJLDryTime' in key_list:
+    try:
+        if opts['HPPJLDryTime'] == '0':
+            os.write(output_fd, b'@PJL SET DRYTIME=0\x0a') 
+        elif opts['HPPJLDryTime'] == 'Medium':
+            os.write(output_fd, b'@PJL SET DRYTIME=4\x0a') 
+        if opts['HPPJLDryTime'] == 'Long':
+            os.write(output_fd, b'@PJL SET DRYTIME=7\x0a') 
+    except:
+        os.write(output_fd, b'@PJL SET DRYTIME=0\x0a')
+
+if 'HPPJLSaturation' in key_list:
+    try:
+        if opts['HPPJLSaturation'] == '-2':
+            os.write(output_fd, b'@PJL SET SATURATION=0\x0a') 
+        elif opts['HPPJLSaturation'] == '-1':
+            os.write(output_fd, b'@PJL SET SATURATION=2\x0a') 
+        elif opts['HPPJLSaturation'] == '0':
+            os.write(output_fd, b'@PJL SET SATURATION=4\x0a') 
+        elif opts['HPPJLSaturation'] == '+1':
+            os.write(output_fd, b'@PJL SET SATURATION=6\x0a') 
+        if opts['HPPJLSaturation'] == '+2':
+            os.write(output_fd, b'@PJL SET SATURATION=8\x0a')
+    except:
+            os.write(output_fd, b'@PJL SET SATURATION=4\x0a')
+
+if 'HPPJLInkBleed' in key_list:
+    try:
+        if opts['HPPJLInkBleed'] == '-2' or opts['HPPJLInkBleed'] == 'Default':
+            os.write(output_fd, b'@PJL SET INKBLEED=0\x0a') 
+        elif opts['HPPJLInkBleed'] == '-1':
+            os.write(output_fd, b'@PJL SET INKBLEED=2\x0a') 
+        elif opts['HPPJLInkBleed'] == '0' or opts['HPPJLInkBleed'] == 'Less':
+            os.write(output_fd, b'@PJL SET INKBLEED=4\x0a') 
+        elif opts['HPPJLInkBleed'] == '+1':
+            os.write(output_fd, b'@PJL SET INKBLEED=6\x0a') 
+        elif opts['HPPJLInkBleed'] == 'Least':
+            os.write(output_fd, b'@PJL SET INKBLEED=7\x0a') 
+        elif opts['HPPJLInkBleed'] == '+2':
+            os.write(output_fd, b'@PJL SET INKBLEED=8\x0a') 
+    except:
+        os.write(output_fd, b'@PJL SET INKBLEED=4\x0a')
+
+if 'HPPJLColorAsGray' in key_list:
+    try:
+        if opts['HPPJLColorAsGray'] == 'Off' or opts['HPPJLColorAsGray'] == 'off':
+            os.write(output_fd, b'@PJL SET GRAYSCALE=OFF\x0a') 
+        elif opts['HPPJLColorAsGray'] == 'HighQuality':
+            os.write(output_fd, b'@PJL SET GRAYSCALE=COMPOSITE\x0a') 
+        elif opts['HPPJLColorAsGray'] == 'BlackInkOnly':
+            os.write(output_fd, b'@PJL SET GRAYSCALE=BLACKONLY\x0a')
+        elif opts['HPPJLColorAsGray'] == 'yes' or opts['HPPJLColorAsGray'] == 'on' :
+            os.write(output_fd, b'@PJL SET RESOLUTION=600\x0a')
+            os.write(output_fd, b'@PJL SET BITSPERPIXEL=8\x0a')
+            os.write(output_fd, b'@PJL SET GRAYSCALE=COMPOSITE\x0a')
+        elif opts['HPPJLColorAsGray'] == 'no':
+            os.write(output_fd, b'@PJL SET RESOLUTION=600\x0a')
+            os.write(output_fd, b'@PJL SET BITSPERPIXEL=8\x0a')
+    except:
+        os.write(output_fd, b'@PJL SET GRAYSCALE=OFF\x0a')
+
+os.write(output_fd, UEL)
+
+while True:
+    try:
+        data = os.read(0, 4096)
+    except IOError:
+        bug('Unable to read from standart input')
+        sys.exit(CUPS_FILTER_FAILED)
+    if not data:
+        break
+    os.write(output_fd, data)
+
+os.write(output_fd, END_JOB)
+
+sys.exit(CUPS_FILTER_OK)

@@ -1,0 +1,516 @@
+# @configure_input@
+#
+#  ESP Package Manager (EPM) "list" file.
+#
+#  (c) 2008-2009 Copyright HP Development Company, LP
+#
+#  Use this configuration for new distributions that support CUPSDDK 1.2.3 or higher.
+#    ./configure --prefix=/usr
+#
+#  Use this configuration for old distributions that do *not* support CUPSDDK 1.2.3 or higher.
+#    ./configure --prefix=/usr --disable-foomatic-drv-install --enable-foomatic-ppd-install --enable-foomatic-rip-hplip-install
+#
+#  By default the hplipfull package is built (print, scan, fax, hp-toolbox, hp-setup).
+#
+#  Use this configuration to make the hpliplite package (print, scan).
+#    ./configure --prefix=/usr --enable-lite-build
+#
+#  Use this command to build the hplip package.
+#    make rpm | deb
+#
+#  5/5/09 DES, Added configure time "#" lines since EPM does not handle nested conditionals.
+#
+
+%product HPLIP
+%copyright (c) 2004-2009 Copyright HP Development Company, LP
+%vendor HP
+%if PLUGIN
+%license prnt/plugins/license.txt
+%else
+%license COPYING
+%endif
+%readme doc/index.html
+%version @VERSION@
+%description The HP Linux Imaging and Printing (HPLIP) system
+%description provides a unified single and multi-function connectivity
+%description driver solution. HPLIPLITE provides support for print and scan only.
+%description HPLIPFULL provides support for print, scan, fax and toolbox.
+
+%format rpm deb portable
+
+$prefix=@prefix@
+$exec_prefix=@exec_prefix@
+$bindir=@bindir@
+$datarootdir=@datarootdir@
+$datadir=@datadir@
+$libdir=@libdir@
+$srcdir=@srcdir@
+$pyexecdir=@pyexecdir@
+$icondir=@icondir@
+$systraydir=@systraydir@
+$docdir=@hpdocdir@
+$htmldir=@hphtmldir@
+$version=@VERSION@
+$internal_tag=@PACKAGE_BUGREPORT@
+
+$home=@abs_datadir@/hplip
+$ppd=@abs_ppddir@
+$cupsbackend=@cupsbackenddir@
+$cupsfilter=@cupsfilterdir@
+$drv=@abs_drvdir@
+$hpaio-version=libsane-hpaio.so.1.0.0
+$foomatic-rip-install=@epm_foomatic_rip_hplip_install@
+$foomatic-ppd-install=@epm_foomatic_ppd_install@
+$cups-ppd-install=@epm_cups_ppd_install@
+$hpijs-install=@epm_hpijs_install@
+$hpcups-install=@epm_hpcups_install@
+$foomatic-drv-install=@epm_foomatic_drv_install@
+$cups-drv-install=@epm_cups_drv_install@
+$machine=@platform@
+
+$print_only_exclude=@epm_print_only_exclude@
+
+%system linux
+%postinstall ldconfig
+%system all
+
+%if hpijs-install
+@epm_full@f 0755 root root $bindir/hpijs .libs/hpijs
+@epm_lite@f 0755 root root $bindir/hpijs .libs/hpijs
+@epm_hpijs_only@f 0755 root root $bindir/hpijs hpijs
+%endif
+%if hpcups-install
+f 0755 root root $cupsfilter/hpcups hpcups
+f 0755 root root $cupsfilter/hpps prnt/filters/hpps
+%endif
+f 0644 root root /etc/hp/hplip.conf hplip.conf
+f 0644 root root /etc/cups/pstotiff.convs fax/filters/pstotiff.convs
+f 0644 root root /etc/cups/pstotiff.types fax/filters/pstotiff.types
+f 0755 root root $cupsfilter/pstotiff fax/filters/pstotiff
+f 0755 root root $cupsfilter/hpcupsfax .libs/hpcupsfax
+%if foomatic-drv-install
+f 0644 root root $drv/hpijs.drv prnt/drv/hpijs.drv
+%endif
+%if foomatic-rip-install
+f 0755 root root $cupsfilter/foomatic-rip-hplip prnt/hpijs/foomatic-rip-hplip
+%endif
+%if foomatic-ppd-install
+f 0644 root root $ppd/HP ppd/hpijs/*.ppd.gz
+%endif
+%if cups-drv-install
+f 0644 root root $drv/hpcups.drv prnt/drv/hpcups.drv
+%endif
+%if cups-ppd-install
+f 0644 root root $ppd/HP ppd/hpcups/*.ppd.gz
+%endif
+f 0644 root root $ppd/HP prnt/ps/*.ppd.gz
+
+%system darwin
+@epm_print_only_exclude@f 0755 root root $libdir/libhpmud.0.0.6.dylib .libs/libhpmud.0.0.6.dylib
+@epm_print_only_exclude@l 0755 root root $libdir/libhpmud.dylib libhpmud.0.0.6.dylib
+@epm_print_only_exclude@f 0755 root root $libdir/libhpip.0.0.1.dylib .libs/libhpip.0.0.1.dylib
+@epm_print_only_exclude@l 0755 root root $libdir/libhpip.dylib libhpip.0.0.1.dylib
+@epm_print_only_exclude@f 0755 root root $libdir/libhpipp.0.0.1.dylib .libs/libhpipp.0.0.1.dylib
+@epm_print_only_exclude@l 0755 root root $libdir/libhpipp.dylib libhpipp.0.0.1.dylib
+@epm_print_only_exclude@f 0755 root root $libdir/libhpdiscovery.0.0.1.dylib .libs/libhpdiscovery.0.0.1.dylib
+@epm_print_only_exclude@l 0755 root root $libdir/libhpdiscovery.dylib libhpdiscovery.0.0.1.dylib
+%system !darwin
+@epm_print_only_exclude@f 0755 root root $libdir/libhpmud.so.0.0.6 .libs/libhpmud.so.0.0.6
+@epm_print_only_exclude@l 0755 root root $libdir/libhpmud.so libhpmud.so.0.0.6
+@epm_print_only_exclude@f 0755 root root $libdir/libhpip.so.0.0.1 .libs/libhpip.so.0.0.1
+@epm_print_only_exclude@l 0755 root root $libdir/libhpip.so libhpip.so.0.0.1
+@epm_print_only_exclude@f 0755 root root $libdir/libhpipp.so.0.0.1 .libs/libhpipp.so.0.0.1
+@epm_print_only_exclude@l 0755 root root $libdir/libhpipp.so libhpipp.so.0.0.1
+@epm_print_only_exclude@f 0755 root root $libdir/libhpdiscovery.so.0.0.1 .libs/libhpdiscovery.so.0.0.1
+@epm_print_only_exclude@l 0755 root root $libdir/libhpdiscovery.so libhpdiscovery.so.0.0.1
+
+# Ugly fix for inconsistent libcrypto soname
+#l 0755 root root $libdir/libcrypto.so.6 libcrypto.so.0.9.8
+%system all
+
+# scan
+%if !print_only_exclude
+@epm_scan@%system darwin
+@epm_scan@f 0755 root root $libdir/sane/${hpaio-version}.dylib .libs/${hpaio-version}.dylib
+@epm_scan@l 0755 root root $libdir/sane/libsane-hpaio.dylib ${hpaio-version}.dylib
+@epm_scan@%system !darwin
+@epm_scan@f 0755 root root $libdir/sane/${hpaio-version} .libs/${hpaio-version}
+@epm_scan@l 0755 root root $libdir/sane/libsane-hpaio.so ${hpaio-version}
+@epm_scan@l 0755 root root $libdir/sane/libsane-hpaio.so.1 ${hpaio-version}
+@epm_scan@%system all
+@epm_scan@%postinstall <<EOF
+@epm_scan@if [ -f /etc/sane.d/dll.conf ]; then
+@epm_scan@   grep -q ^#hpaio /etc/sane.d/dll.conf
+@epm_scan@   if [ $$? -eq 0 ]; then
+@epm_scan@      sed -i -e s/^#hpaio/hpaio/ /etc/sane.d/dll.conf
+@epm_scan@   else
+@epm_scan@      grep -q ^hpaio /etc/sane.d/dll.conf
+@epm_scan@      if [ $$? -ne 0 ]; then
+@epm_scan@	 echo hpaio >>/etc/sane.d/dll.conf
+@epm_scan@      fi
+@epm_scan@   fi
+@epm_scan@fi
+@epm_scan@EOF
+%endif
+
+# full
+@epm_full@%system darwin
+@epm_full@f 0755 root root $pyexecdir/cupsext.dylib .libs/cupsext.dylib
+@epm_full@f 0755 root root $pyexecdir/hpmudext.dylib .libs/hpmudext.dylib
+@epm_full@f 0755 root root $pyexecdir/pcardext.dylib .libs/pcardext.dylib
+@epm_scan@@epm_full@f 0755 root root $pyexecdir/scanext.dylib .libs/scanext.dylib
+@epm_full@%system !darwin
+@epm_full@f 0755 root root $pyexecdir/cupsext.so .libs/cupsext.so
+@epm_full@f 0755 root root $pyexecdir/hpmudext.so .libs/hpmudext.so
+@epm_full@f 0755 root root $pyexecdir/pcardext.so .libs/pcardext.so
+@epm_scan@@epm_full@f 0755 root root $pyexecdir/scanext.so .libs/scanext.so
+@epm_full@%system all
+@epm_full@f 644 root root $icondir/hplip.desktop hplip.desktop
+@epm_full@f 644 root root $systraydir/hplip-systray.desktop hplip-systray.desktop
+@epm_full@f 0700 root root $cupsbackend/hpfax fax/backend/hpfax.py
+@epm_full@f 644 root root $ppd/HP fax/ppd/*.ppd.gz
+# /usr/share/hplip files
+@epm_full@f 755 root root $home/levels.py levels.py
+@epm_full@f 755 root root $home/toolbox.py toolbox.py
+@epm_full@f 755 root root $home/probe.py probe.py
+@epm_full@f 755 root root $home/faxsetup.py faxsetup.py
+@epm_full@f 755 root root $home/hpdio.py hpdio.py
+@epm_full@f 755 root root $home/linefeedcal.py linefeedcal.py
+@epm_full@f 755 root root $home/pqdiag.py pqdiag.py
+@epm_full@f 755 root root $home/printsettings.py printsettings.py
+@epm_full@f 755 root root $home/query.py query.py
+@epm_full@f 755 root root $home/__init__.py __init__.py
+@epm_full@d 775 root root $home/fax -
+@epm_full@f 644 root root $home/fax/__init__.py fax/__init__.py
+@epm_full@f 644 root root $home/fax/pmlfax.py fax/pmlfax.py
+@epm_full@f 644 root root $home/fax/soapfax.py fax/soapfax.py
+@epm_full@f 644 root root $home/fax/marvellfax.py fax/marvellfax.py
+@epm_full@f 644 root root $home/fax/coverpages.py fax/coverpages.py
+@epm_full@f 644 root root $home/fax/fax.py fax/fax.py
+@epm_full@f 644 root root $home/fax/faxdevice.py fax/faxdevice.py
+@epm_full@f 644 root root $home/fax/ledmfax.py fax/ledmfax.py
+@epm_full@f 644 root root $home/fax/ledmsoapfax.py fax/ledmsoapfax.py
+@epm_full@f 755 root root $home/fab.py fab.py
+@epm_full@f 755 root root $home/pkservice.py pkservice.py
+@epm_full@f 755 root root $home/hpssd.py hpssd.py
+@epm_full@d 775 root root $home/base -
+@epm_full@f 644 root root $home/base base/*.py
+@epm_full@d 775 root root $home/base/pexpect -
+@epm_full@f 644 root root $home/base/pexpect/__init__.py base/pexpect/__init__.py
+@epm_full@f 644 root root $home/hpaio.desc scan/sane/hpaio.desc
+@epm_full@f 755 root root $home/align.py align.py
+@epm_full@f 755 root root $home/timedate.py timedate.py
+@epm_full@d 775 root root $home/copier -
+@epm_full@f 644 root root $home/copier/__init__.py copier/__init__.py
+@epm_full@f 644 root root $home/copier/copier.py copier/copier.py
+@epm_full@f 755 root root $home/makecopies.py makecopies.py
+@epm_full@f 755 root root $home/unload.py unload.py
+@epm_full@f 755 root root $home/scan.py scan.py
+@epm_full@f 755 root root $home/sendfax.py sendfax.py
+
+@epm_full@d 775 root root $home/selinux -
+@epm_full@f 755 root root $home/selinux/hplip.te selinux/hplip.te
+@epm_full@f 755 root root $home/selinux/hplip.fc selinux/hplip.fc
+@epm_full@f 755 root root $home/selinux/hplip.if selinux/hplip.if
+@epm_full@f 755 root root $home/selinux/hplip.pp selinux/hplip.pp
+
+@epm_full@d 775 root root $home/data -
+@epm_full@d 775 root root $home/data/pcl -
+@epm_full@f 644 root root $home/data/pcl data/pcl/*.pcl.gz
+@epm_full@d 775 root root $home/data/ldl -
+@epm_full@f 644 root root $home/data/ldl data/ldl/*.ldl.gz
+@epm_full@d 775 root root $home/data/models -
+@epm_full@f 644 root root $home/data/models/models.dat data/models/models.dat
+@epm_full@d 775 root root $home/data/localization -
+@epm_full@f 644 root root $home/data/localization data/localization/*.qm
+@epm_full@d 775 root root $home/data/images -
+@epm_full@d 775 root root $home/data/images/other -
+@epm_full@f 644 root root $home/data/images/other data/images/other/*
+@epm_full@d 775 root root $home/data/images/16x16 -
+@epm_full@f 644 root root $home/data/images/16x16 data/images/16x16/*
+@epm_full@d 775 root root $home/data/images/24x24 -
+@epm_full@f 644 root root $home/data/images/24x24 data/images/24x24/*
+@epm_full@d 775 root root $home/data/images/devices -
+@epm_full@f 644 root root $home/data/images/devices data/images/devices/*
+@epm_full@d 775 root root $home/data/images/32x32 -
+@epm_full@f 644 root root $home/data/images/32x32 data/images/32x32/*
+@epm_full@d 775 root root $home/data/images/128x128 -
+@epm_full@f 644 root root $home/data/images/128x128 data/images/128x128/*
+@epm_full@d 775 root root $home/data/images/64x64 -
+@epm_full@f 644 root root $home/data/images/64x64 data/images/64x64/*
+@epm_full@d 775 root root $home/data/images/256x256 -
+@epm_full@f 644 root root $home/data/images/256x256 data/images/256x256/*
+@epm_full@d 775 root root $home/data/ps -
+@epm_full@f 644 root root $home/data/ps/clean_page.pdf.gz data/ps/clean_page.pdf.gz
+@epm_full@f 644 root root $home/data/ps/testpage.ps.gz data/ps/testpage.ps.gz
+@epm_full@f 755 root root $home/testpage.py testpage.py
+@epm_full@f 755 root root $home/systray.py systray.py
+@epm_full@f 755 root root $home/setup.py setup.py
+@epm_full@f 755 root root $home/makeuri.py makeuri.py
+@epm_full@d 775 root root $home/scan -
+@epm_full@f 644 root root $home/scan/__init__.py scan/__init__.py
+@epm_full@f 644 root root $home/scan/sane.py scan/sane.py
+@epm_full@f 755 root root $home/plugin.py plugin.py
+@epm_full@f 755 root root $home/check-plugin.py check-plugin.py
+@epm_full@f 755 root root $home/diagnose_plugin.py diagnose_plugin.py
+@epm_full@f 755 root root $home/print.py print.py
+@epm_full@f 755 root root $home/firmware.py firmware.py
+@epm_full@d 775 root root $home/plugins -
+@epm_full@f 644 root root $home/plugins/powersettings2.py plugins/powersettings2.py
+@epm_full@f 644 root root $home/plugins/__init__.py plugins/__init__.py
+@epm_full@f 644 root root $home/plugins/powersettingsdialog_base.py plugins/powersettingsdialog_base.py
+@epm_full@f 644 root root $home/plugins/Officejet_H470.py plugins/Officejet_H470.py
+@epm_full@f 644 root root $home/plugins/powersettingsdialog.py plugins/powersettingsdialog.py
+@epm_full@f 644 root root $home/plugins/Deskjet_460.py plugins/Deskjet_460.py
+@epm_full@f 644 root root $home/plugins/dj450.py plugins/dj450.py
+@epm_full@f 644 root root $home/plugins/powersettings.py plugins/powersettings.py
+@epm_full@d 775 root root $home/installer -
+@epm_full@f 644 root root $home/installer/distros.dat installer/distros.dat
+@epm_full@f 644 root root $home/installer/__init__.py installer/__init__.py
+@epm_full@f 644 root root $home/installer/dcheck.py installer/dcheck.py
+@epm_full@f 644 root root $home/installer/core_install.py installer/core_install.py
+@epm_full@f 644 root root $home/installer/pluginhandler.py installer/pluginhandler.py
+@epm_full@f 755 root root $home/uninstall.py uninstall.py
+@epm_full@f 755 root root $home/upgrade.py upgrade.py
+@epm_full@f 755 root root $home/colorcal.py colorcal.py
+@epm_full@d 775 root root $home/prnt -
+@epm_full@f 644 root root $home/prnt/pcl.py prnt/pcl.py
+@epm_full@f 644 root root $home/prnt/cups.py prnt/cups.py
+@epm_full@f 644 root root $home/prnt/__init__.py prnt/__init__.py
+@epm_full@f 644 root root $home/prnt/ldl.py prnt/ldl.py
+@epm_full@f 644 root root $home/prnt/colorcal.py prnt/colorcal.py
+@epm_full@f 755 root root $home/clean.py clean.py
+@epm_full@f 755 root root $home/check.py check.py
+@epm_full@f 755 root root $home/doctor.py doctor.py
+@epm_full@f 755 root root $home/logcapture.py logcapture.py
+@epm_full@d 775 root root $home/pcard -
+@epm_full@f 644 root root $home/pcard/__init__.py pcard/__init__.py
+@epm_full@f 644 root root $home/pcard/photocard.py pcard/photocard.py
+@epm_full@f 755 root root $home/info.py info.py
+@epm_full@f 755 root root $home/wificonfig.py wificonfig.py
+@epm_full@f 755 root root $home/devicesettings.py devicesettings.py
+@epm_full@f 755 root root $home/config_usb_printer.py config_usb_printer.py
+@epm_full@f 755 root root $home/diagnose_queues.py diagnose_queues.py
+@epm_full@f 755 root root $home/hplip_clean.sh hplip_clean.sh
+
+# docs
+@epm_full@f 644 root root $htmldir doc/*
+@epm_full@d 775 root root $htmldir/images -
+@epm_full@f 644 root root $htmldir/images doc/images/*
+@epm_full@d 775 root root $htmldir/styles -
+@epm_full@f 644 root root $htmldir/styles doc/styles/*
+# python commands
+@epm_full@l 755 root root $bindir/hp-toolbox ../share/hplip/toolbox.py
+@epm_full@l 755 root root $bindir/hp-colorcal ../share/hplip/colorcal.py
+@epm_full@l 755 root root $bindir/hp-sendfax ../share/hplip/sendfax.py
+@epm_full@l 755 root root $bindir/hp-clean ../share/hplip/clean.py
+@epm_full@l 755 root root $bindir/hp-testpage ../share/hplip/testpage.py
+@epm_full@l 755 root root $bindir/hp-systray ../share/hplip/systray.py
+@epm_full@l 755 root root $bindir/hp-firmware ../share/hplip/firmware.py
+@epm_full@l 755 root root $bindir/hp-makeuri ../share/hplip/makeuri.py
+@epm_full@l 755 root root $bindir/hp-fab ../share/hplip/fab.py
+@epm_full@l 755 root root $bindir/hp-pkservice ../share/hplip/pkservice.py
+@epm_full@l 755 root root $bindir/hp-align ../share/hplip/align.py
+@epm_full@l 755 root root $bindir/hp-print ../share/hplip/print.py
+@epm_full@l 755 root root $bindir/hp-setup ../share/hplip/setup.py
+@epm_full@l 755 root root $bindir/hp-levels ../share/hplip/levels.py
+@epm_full@l 755 root root $bindir/hp-unload ../share/hplip/unload.py
+@epm_full@l 755 root root $bindir/hp-probe ../share/hplip/probe.py
+@epm_full@l 755 root root $bindir/hp-timedate ../share/hplip/timedate.py
+@epm_full@l 755 root root $bindir/hp-plugin ../share/hplip/plugin.py
+@epm_full@l 755 root root $bindir/hp-diagnose_plugin ../share/hplip/diagnose_plugin.py
+@epm_full@l 755 root root $bindir/hp-check ../share/hplip/check.py
+@epm_full@l 755 root root $bindir/hp-doctor ../share/hplip/doctor.py
+@epm_full@l 755 root root $bindir/hp-logcapture ../share/hplip/logcapture.py
+@epm_full@l 755 root root $bindir/hp-info ../share/hplip/info.py
+@epm_full@l 755 root root $bindir/hp-makecopies ../share/hplip/makecopies.py
+@epm_full@l 755 root root $bindir/hp-scan ../share/hplip/scan.py
+@epm_full@l 755 root root $bindir/hp-faxsetup ../share/hplip/faxsetup.py
+@epm_full@l 755 root root $bindir/hp-linefeedcal ../share/hplip/linefeedcal.py
+@epm_full@l 755 root root $bindir/hp-printsettings ../share/hplip/printsettings.py
+@epm_full@l 755 root root $bindir/hp-query ../share/hplip/query.py
+@epm_full@l 755 root root $bindir/hp-wificonfig ../share/hplip/wificonfig.py
+@epm_full@l 755 root root $bindir/hp-devicesettings ../share/hplip/devicesettings.py
+@epm_full@l 755 root root $bindir/hp-uninstall ../share/hplip/uninstall.py
+@epm_full@l 755 root root $bindir/hp-upgrade ../share/hplip/upgrade.py
+@epm_full@l 755 root root $bindir/hp-config_usb_printer ../share/hplip/config_usb_printer.py
+@epm_full@l 755 root root $bindir/hp-diagnose_queues ../share/hplip/diagnose_queues.py
+
+# qt4
+@epm_full@@epm_qt4@d 775 root root $home/ui4 -
+@epm_full@@epm_qt4@f 644 root root $home/ui4 ui4/*.py
+
+# qt3
+@epm_full@@epm_qt3@d 775 root root $home/ui -
+@epm_full@@epm_qt3@f 644 root root $home/ui ui/*.py
+
+%if !SUSE9
+@epm_print_only_exclude@f 0700 root root $cupsbackend/hp .libs/hp
+%endif
+
+# Use LINPUS8 for Acer Aspire One
+%if LINPUS8 RHEL5
+@epm_print_only_exclude@f 0644 root root /etc/udev/rules.d/56-hpmud_sysfs.rules data/rules/56-hpmud_sysfs.rules
+%endif
+
+%if RHEL3
+f 0755 root root /etc/hotplug/usb/hpmud data/rules/hpmud
+l 0644 root root /usr/share/cups/model/foomatic-ppds $ppd/HP
+@epm_print_only_exclude@%postinstall <<EOF
+@epm_print_only_exclude@if [ -f /etc/hotplug/usb.usermap ]; then
+@epm_print_only_exclude@   grep -q ^hpmud /etc/hotplug/usb.usermap
+@epm_print_only_exclude@   if [ $$? -ne 0 ]; then
+@epm_print_only_exclude@     echo "hpmud 0x0001 0x03f0 0x0000 0x0000 0x0000 0x00 0x00 0x00 0x00 0x00 0x00 0x00000000" >>/etc/hotplug/usb.usermap
+@epm_print_only_exclude@   fi
+@epm_print_only_exclude@fi
+@epm_print_only_exclude@EOF
+%endif
+
+%system !darwin
+%if !LINPUS8 !RHEL3 !UBUNTU804 !SUSE9 !RHEL5
+@epm_print_only_exclude@f 0644 root root /etc/udev/rules.d/56-hpmud.rules data/rules/56-hpmud.rules
+@epm_print_only_exclude@f 0644 root root /usr/share/hal/fdi/preprobe/10osvendor/20-hplip-devices.fdi data/rules/20-hplip-devices.fdi
+%endif
+%system all
+
+%if LINPUS8
+%requires PyQt
+%requires cupsddk-drivers
+%requires cupsddk-devel
+%provides hpijs $version
+%endif
+
+%if FEDORA9 RHEL5
+@epm_full@%requires PyQt
+@epm_full@%provides hpijs $version
+%endif
+
+%if FEDORA9
+@epm_lite@%provides hpijs $version
+%endif
+
+%if SUSE9
+l 0644 root root /usr/share/cups/model/foomatic-ppds $ppd/HP
+%postinstall <<EOF
+rm -f /usr/share/cups/model/HP/*.hpijs.ppd.gz
+rm -f /usr/share/cups/model/HP/*.Postscript.ppd.gz
+EOF
+%endif
+
+%if UBUNTU804
+@epm_full@%requires python-qt4
+@epm_full@%requires python-qt4-dbus
+@epm_full@%replaces foomatic-db-hpijs
+@epm_full@%replaces hpijs
+@epm_full@%replaces hplip
+@epm_full@%replaces hplip-data
+@epm_full@f 0644 root root /usr/share/hal/fdi/preprobe/10osvendor/20-hplip-devices.fdi data/rules/20-hplip-devices.fdi
+@epm_full@%postinstall <<EOF
+@epm_full@install -m 644 data/rules/56-hpmud.rules /etc/udev/rules.d
+@epm_full@EOF
+%endif
+
+%if UBUNTU804
+@epm_lite@%replaces foomatic-db-hpijs
+@epm_lite@%replaces hpijs
+@epm_lite@%replaces hplip
+@epm_lite@%replaces hplip-data
+@epm_lite@f 0644 root root /usr/share/hal/fdi/preprobe/10osvendor/20-hplip-devices.fdi data/rules/20-hplip-devices.fdi
+@epm_lite@%postinstall <<EOF
+@epm_lite@install -m 644 data/rules/56-hpmud.rules /etc/udev/rules.d
+@epm_lite@EOF
+%endif
+
+%if DEBIAN5
+@epm_full@%requires python-qt4
+@epm_full@%requires python-qt4-dbus
+@epm_full@%requires libc6
+@epm_full@%requires libcups2
+@epm_full@%requires cups-ddk
+@epm_full@%requires libdbus-1-3
+@epm_full@%requires libsane
+@epm_full@%requires libsnmp15
+@epm_full@%requires libusb-0.1-4
+@epm_full@%requires libgcc1
+@epm_full@%requires libjpeg62
+@epm_full@%requires libstdc++6
+@epm_full@%replaces foomatic-db-hpijs
+@epm_full@%replaces hpijs
+@epm_full@%replaces hplip
+@epm_full@%replaces hplip-data
+@epm_full@%replaces hplip-gui
+@epm_full@%postinstall <<EOF
+@epm_full@sed -i -e s/GROUP=\"lp\"/GROUP=\"scanner\"/ /etc/udev/rules.d/56-hpmud.rules
+@epm_full@EOF
+%endif
+
+%if DEBIAN5
+@epm_lite@%requires libc6
+@epm_lite@%requires libcups2
+@epm_lite@%requires cups-ddk
+@epm_lite@%requires libdbus-1-3
+@epm_lite@%requires libsane
+@epm_lite@%requires libsnmp15
+@epm_lite@%requires libusb-0.1-4
+@epm_lite@%requires libgcc1
+@epm_lite@%requires libjpeg62
+@epm_lite@%requires libstdc++6
+@epm_lite@%replaces foomatic-db-hpijs
+@epm_lite@%replaces hpijs
+@epm_lite@%replaces hplip
+@epm_lite@%replaces hplip-data
+@epm_lite@%postinstall <<EOF
+@epm_lite@sed -i -e s/GROUP=\"lp\"/GROUP=\"scanner\"/ /etc/udev/rules.d/56-hpmud.rules
+@epm_lite@EOF
+%endif
+
+%if PLUGIN
+f 0644 root root $docdir/license.txt prnt/plugins/license.txt
+f 0644 root root $docdir/COPYING prnt/plugins/license.txt
+f 0644 root root $docdir/copyright prnt/plugins/copyright
+d 0755 root root /var/lib/hp/ -
+f 0644 root root $home/data/firmware data/firmware/*.fw.gz
+d 0775 root root $home/data/plugin -
+
+#scan
+
+@epm_print_only_exclude@f 0644 root root $home/data/models/models.dat data/models/models.dat
+
+%system !darwin
+
+f 0755 root root $home/prnt/plugins/lj-${machine}.so prnt/plugins/lj-${machine}.so
+l 0755 root root $home/prnt/plugins/lj.so lj-${machine}.so
+f 0755 root root $home/prnt/plugins/hbpl1-${machine}.so prnt/plugins/hbpl1-${machine}.so
+l 0755 root root $home/prnt/plugins/hbpl1.so hbpl1-${machine}.so
+@epm_print_only_exclude@d 0775 root root $home/scan/plugins -
+@epm_print_only_exclude@f 0755 root root $home/scan/plugins/bb_marvell-${machine}.so scan/sane/bb_marvell-${machine}.so
+@epm_print_only_exclude@l 0755 root root $home/scan/plugins/bb_marvell.so bb_marvell-${machine}.so
+@epm_print_only_exclude@f 0755 root root $home/scan/plugins/bb_soapht-${machine}.so scan/sane/bb_soapht-${machine}.so
+@epm_print_only_exclude@l 0755 root root $home/scan/plugins/bb_soapht.so bb_soapht-${machine}.so
+@epm_print_only_exclude@f 0755 root root $home/scan/plugins/bb_soap-${machine}.so scan/sane/bb_soap-${machine}.so
+@epm_print_only_exclude@l 0755 root root $home/scan/plugins/bb_soap.so bb_soap-${machine}.so
+@epm_print_only_exclude@f 0755 root root $home/fax/plugins/fax_marvell-${machine}.so fax/plugins/fax_marvell-${machine}.so
+@epm_print_only_exclude@l 0755 root root $home/fax/plugins/fax_marvell.so fax_marvell-${machine}.so
+
+
+%system all
+%postinstall <<EOF
+ver=`echo $version | sed 's/\([0-9]*.[0-9]*.[0-9]*\).*/\1/'`
+touch $home/data/plugin/hplip-$${ver}-plugin.run
+semodule -n -i $home/selinux/hplip.pp
+EOF
+%postremove <<EOF
+ver=`echo $version | sed 's/\([0-9]*.[0-9]*.[0-9]*\).*/\1/'`
+rm -f $home/data/plugin/hplip-$${ver}-plugin.run
+EOF
+%else
+f 0644 root root $docdir/COPYING COPYING
+f 0644 root root $docdir/copyright copyright
+d 0755 root root /var/lib/hp/ -
+
+%system !darwin
+@epm_print_only_exclude@f 0644 root root /etc/udev/rules.d/56-hpmud.rules data/rules/56-hpmud.rules
+
+%system all
+%endif
+#end PLUGIN

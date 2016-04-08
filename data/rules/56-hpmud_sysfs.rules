@@ -1,0 +1,27 @@
+# HPLIP udev rules file. Notify console user if plugin support is required for this device.
+
+ACTION!="add", GOTO="hpmud_rules_end"
+SUBSYSTEM=="ppdev", OWNER="root", GROUP="lp", MODE="0666"
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", GOTO="hpmud_usb_rules"
+
+
+LABEL="hpmud_usb_rules"
+
+# ENV{ID_HPLIP}="1" is for Ubuntu udev-acl
+# SYSFS is for RHEL 5, Centos 5. RHEL 5 requires 'rw-rw-rw-' permissions to setup.
+SYSFS{idVendor}=="03f0", SYSFS{idProduct}=="????", OWNER="root", GROUP="lp", MODE="0666", ENV{sane_hpaio}="yes", ENV{libsane_matched}="yes", ENV{hp_test}="yes", ENV{ID_HPLIP}="1"
+
+# For RHEL 5, centos 5..
+ENV{hp_test}=="yes", PROGRAM="/bin/sh -c 'X=%k; X=$${X#usbdev}; B=$${X%%%%.*}; D=$${X#*.}; logger -p user.info loading HP Device $$B $$D; printf %%03i:%%03i $$B $$D'", RUN+="/bin/sh -c '/usr/bin/python hp-config_usb_printer %c '"
+
+# This rule will add the printer and install plugin
+ENV{hp_test}=="yes", PROGRAM="/bin/sh -c 'logger -p user.info loading HP Device $env{BUSNUM} $env{DEVNUM}'", RUN+="/bin/sh -c 'if [ -f /usr/bin/systemctl ]; then /usr/bin/systemctl --no-block start hplip-printer@$env{BUSNUM}:$env{DEVNUM}.service; else /usr/bin/nohup /usr/bin/python /usr/bin/hp-config_usb_printer $env{BUSNUM}:$env{DEVNUM} ; fi &'"
+
+# If sane-bankends is installed add hpaio backend support to dll.conf if needed.
+ENV{sane_hpaio}=="yes", RUN+="/bin/sh -c 'grep -q ^#hpaio /etc/sane.d/dll.conf;if [ $$? -eq 0 ];then sed -i -e s/^#hpaio/hpaio/ /etc/sane.d/dll.conf;else grep -q ^hpaio /etc/sane.d/dll.conf;if [ $$? -ne 0 ];then echo hpaio >>/etc/sane.d/dll.conf;fi;fi'"
+
+# The following rule will disable USB autosuspend for the device
+ENV{libsane_matched}=="yes", RUN+="/bin/sh -c 'test -e /sys/$env{DEVPATH}/power/level && echo on > /sys/$env{DEVPATH}/power/level'"
+
+
+LABEL="hpmud_rules_end"

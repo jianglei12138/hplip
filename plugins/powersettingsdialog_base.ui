@@ -1,0 +1,192 @@
+<!DOCTYPE UI><UI version="3.3" stdsetdef="1">
+<class>PowerSettingsDialog_base</class>
+<widget class="QDialog">
+    <property name="name">
+        <cstring>PowerSettingsDialog_base</cstring>
+    </property>
+    <property name="geometry">
+        <rect>
+            <x>0</x>
+            <y>0</y>
+            <width>636</width>
+            <height>463</height>
+        </rect>
+    </property>
+    <property name="caption">
+        <string>HP Device Manager - Battery Mode Power Settings</string>
+    </property>
+    <grid>
+        <property name="name">
+            <cstring>unnamed</cstring>
+        </property>
+        <widget class="Line" row="1" column="0" rowspan="1" colspan="3">
+            <property name="name">
+                <cstring>line1</cstring>
+            </property>
+            <property name="frameShape">
+                <enum>HLine</enum>
+            </property>
+            <property name="frameShadow">
+                <enum>Sunken</enum>
+            </property>
+            <property name="orientation">
+                <enum>Horizontal</enum>
+            </property>
+        </widget>
+        <widget class="QLabel" row="0" column="0" rowspan="1" colspan="3">
+            <property name="name">
+                <cstring>textLabel1</cstring>
+            </property>
+            <property name="text">
+                <string>&lt;b&gt;Configure the power off settings when operating on battery power&lt;/b&gt;</string>
+            </property>
+        </widget>
+        <widget class="QPushButton" row="4" column="2">
+            <property name="name">
+                <cstring>pushButton1</cstring>
+            </property>
+            <property name="text">
+                <string>OK</string>
+            </property>
+        </widget>
+        <spacer row="4" column="0">
+            <property name="name">
+                <cstring>spacer1</cstring>
+            </property>
+            <property name="orientation">
+                <enum>Horizontal</enum>
+            </property>
+            <property name="sizeType">
+                <enum>Expanding</enum>
+            </property>
+            <property name="sizeHint">
+                <size>
+                    <width>361</width>
+                    <height>20</height>
+                </size>
+            </property>
+        </spacer>
+        <widget class="QPushButton" row="4" column="1">
+            <property name="name">
+                <cstring>pushButton2</cstring>
+            </property>
+            <property name="text">
+                <string>Cancel</string>
+            </property>
+        </widget>
+        <spacer row="3" column="0">
+            <property name="name">
+                <cstring>spacer2</cstring>
+            </property>
+            <property name="orientation">
+                <enum>Vertical</enum>
+            </property>
+            <property name="sizeType">
+                <enum>Expanding</enum>
+            </property>
+            <property name="sizeHint">
+                <size>
+                    <width>20</width>
+                    <height>171</height>
+                </size>
+            </property>
+        </spacer>
+        <widget class="QButtonGroup" row="2" column="0" rowspan="1" colspan="3">
+            <property name="name">
+                <cstring>power_setting</cstring>
+            </property>
+            <property name="title">
+                <string>Power Settings</string>
+            </property>
+            <grid>
+                <property name="name">
+                    <cstring>unnamed</cstring>
+                </property>
+                <spacer row="1" column="2">
+                    <property name="name">
+                        <cstring>spacer4</cstring>
+                    </property>
+                    <property name="orientation">
+                        <enum>Horizontal</enum>
+                    </property>
+                    <property name="sizeType">
+                        <enum>Expanding</enum>
+                    </property>
+                    <property name="sizeHint">
+                        <size>
+                            <width>121</width>
+                            <height>20</height>
+                        </size>
+                    </property>
+                </spacer>
+                <widget class="QComboBox" row="1" column="1">
+                    <property name="name">
+                        <cstring>power_setting_combo</cstring>
+                    </property>
+                    <property name="enabled">
+                        <bool>false</bool>
+                    </property>
+                </widget>
+                <widget class="QRadioButton" row="1" column="0">
+                    <property name="name">
+                        <cstring>radioButton2</cstring>
+                    </property>
+                    <property name="text">
+                        <string>Automatically turn off printer after:</string>
+                    </property>
+                    <property name="buttonGroupId">
+                        <number>1</number>
+                    </property>
+                </widget>
+                <widget class="QRadioButton" row="0" column="0" rowspan="1" colspan="3">
+                    <property name="name">
+                        <cstring>radioButton1</cstring>
+                    </property>
+                    <property name="text">
+                        <string>Always leave printer on</string>
+                    </property>
+                    <property name="checked">
+                        <bool>true</bool>
+                    </property>
+                    <property name="buttonGroupId">
+                        <number>0</number>
+                    </property>
+                </widget>
+            </grid>
+        </widget>
+    </grid>
+</widget>
+<connections>
+    <connection>
+        <sender>pushButton2</sender>
+        <signal>clicked()</signal>
+        <receiver>PowerSettingsDialog_base</receiver>
+        <slot>reject()</slot>
+    </connection>
+    <connection>
+        <sender>pushButton1</sender>
+        <signal>clicked()</signal>
+        <receiver>PowerSettingsDialog_base</receiver>
+        <slot>accept()</slot>
+    </connection>
+    <connection>
+        <sender>radioButton1</sender>
+        <signal>toggled(bool)</signal>
+        <receiver>power_setting_combo</receiver>
+        <slot>setDisabled(bool)</slot>
+    </connection>
+    <connection>
+        <sender>power_setting</sender>
+        <signal>clicked(int)</signal>
+        <receiver>PowerSettingsDialog_base</receiver>
+        <slot>power_setting_clicked(int)</slot>
+    </connection>
+</connections>
+<includes>
+    <include location="local" impldecl="in implementation">powersettingsdialog_base.ui.h</include>
+</includes>
+<slots>
+    <slot>power_setting_clicked( int )</slot>
+</slots>
+<layoutdefaults spacing="6" margin="11"/>
+</UI>

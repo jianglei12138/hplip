@@ -1,0 +1,18 @@
+#! /bin/bash
+
+conffile="/etc/sysconfig/SuSEfirewall2"
+
+grep ^FW_SERVICES_ACCEPT_EXT $conffile | grep -q "0/0,udp,,5353"
+if [ $? -ne 0 ]; then
+    sed -i 's/^FW_SERVICES_ACCEPT_EXT="\(.*\)"/FW_SERVICES_ACCEPT_EXT="0\/0,udp,,5353 \1"/' $conffile
+fi
+
+grep ^FW_SERVICES_ACCEPT_EXT $conffile | grep -q "0/0,udp,,427"
+if [ $? -ne 0 ]; then
+    sed -i 's/^FW_SERVICES_ACCEPT_EXT="\(.*\)"/FW_SERVICES_ACCEPT_EXT="0\/0,udp,,427 \1"/' $conffile
+fi
+
+sh /etc/init.d/SuSEfirewall2_init restart
+sh /etc/init.d/SuSEfirewall2_setup restart
+
+exit 0

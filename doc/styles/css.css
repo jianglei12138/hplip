@@ -1,0 +1,130 @@
+	body {
+		min-width: 610px;
+		margin: 20px;
+	}
+
+	#container {
+		max-width: 70em;
+		margin: 0 auto;
+	}
+	
+	#mBody {
+		clear: both;
+		padding: 0 0 1em 0;
+	}
+
+	#side {
+		float: left;
+		width: 23%;
+		margin-bottom: 1em;
+	}
+
+	#mainContent {
+		float: right;
+		width: 75%;
+		margin-bottom: 1em;
+	}
+	.nomenu #mainContent {
+		float: none;
+		width: 100%;
+	}
+	.bodyleft {
+		float: right !important;
+		width: 75% !important;
+	}
+	#mainContent.right {
+		float: left;
+		width: 62%;
+	}
+	
+	#side.right {
+		float: right;
+		width: 35%;
+	}
+
+
+	#header { margin-bottom: 1em; }
+	#header ul {
+		margin: 0 0 1em 0;
+		padding: 0;
+	}
+	
+	#header li {
+		display: inline;
+		padding: 0 20px 0 0;
+		margin: 0;
+		white-space: nowrap;
+	}
+
+	#footer {
+		clear: both;
+		margin-top: 1em;
+	}
+		
+	#footer ul {
+		margin: 0 0 1em 0;
+		padding: 0;
+	}
+	
+	#footer li {
+		display: inline;
+		padding: 0 20px 0 0;
+		margin: 0;
+		white-space: nowrap;
+	}
+	
+	#footer p {
+		margin: 0.6em 0;
+	}
+
+	hr.hide {
+		display: none;
+	}
+
+	body {
+		background: #fff;
+		color: #000;
+	}
+
+
+	hr {
+		height: 1px;
+		background-color: #000;
+		color: #000;
+		margin: 2em 0;
+	}
+
+
+    body, td, th, input { 
+            font-family: verdana, sans-serif;
+            font-size: x-small;
+            voice-family: "\"}\"";
+            voice-family: inherit;
+            font-size: small;
+    }
+
+	h1, h2, h3, h4, h5, h6 {
+		margin: 1em 0 0.2em 0;
+		border-bottom: 1px solid #ccc;
+		font-family: arial, verdana, sans-serif;
+	}
+	li h1, li h2, li h3, li h4, li h5, li h6 {
+		border: none;
+	}
+
+	#header h1 { border: 0; }
+
+	h1 { font-size: 160%; font-weight: normal; }
+	h2 { font-size: 150%; font-weight: normal; }
+	h3 { font-size: 120%; }
+	h4 { font-size: 100%; }
+	h5 { font-size: 90%; }
+	h6 { font-size: 90%; border: 0; }
+
+        :link { color: #039; }
+        :visited { color: #636; }
+        :link:hover, :visited:hover { color: #333; }
+        :link:active, :link:active { color: #000; }
+
+	p.crumbs :link { color: #999; }
+	p.crumbs :visited { color: #666; }
