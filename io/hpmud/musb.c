@@ -548,7 +548,12 @@ static int release_interface(file_descriptor *pfd)
     if (pfd->write_active)
     {
         BUG("aborting outstanding %s write\n", fd_name[pfd->fd]);
-        pthread_cancel(pfd->tid);    /* kill outstanding write */
+        //pthread_cancel(pfd->tid);    /* kill outstanding write */
+        int status;
+        if ( (status = pthread_kill(pfd->tid, SIGUSR1)) != 0)   
+	    {   
+            printf("Error cancelling thread %d", pfd->tid);  
+	    }  
         pfd->write_active = 0;
     }
 
@@ -975,10 +980,15 @@ static int del_channel(mud_device *pd, mud_channel *pc)
     return 0;
 }
 
+void handle_quit(int sign)
+{
+    pthread_exit(NULL);
+}
+
 static void write_thread(file_descriptor *pfd)
 {
     int ep = -1;
-
+    signal(SIGUSR1,handle_quit);
     pthread_detach(pthread_self());
 
     ep = get_out_ep(libusb_dev, pfd->config, pfd->interface, pfd->alt_setting, LIBUSB_TRANSFER_TYPE_BULK);

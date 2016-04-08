@@ -62,6 +62,17 @@ void HPCancelJob(int sig)
     exit(0);
 }
 
+int getdomainname (char *name,size_t len)
+{
+    struct utsname u;
+    size_t u_len;
+    if (uname (&u) < 0)
+        return -1;
+    u_len = strlen (u.domainname);
+    memcpy (name, u.domainname, MIN (u_len + 1, len));
+    return 0;
+}
+
 void HPCupsFilter::CreateBMPHeader (int width, int height, int planes, int bpp)
 {
     memset (&this->bmfh, 0, 14);

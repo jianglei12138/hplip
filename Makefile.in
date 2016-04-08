@@ -95,7 +95,7 @@ DIST_COMMON = $(am__configure_deps) \
 @HPLIP_BUILD_TRUE@@LIBUSB01_BUILD_TRUE@am__append_6 = -lusb
 @HPLIP_BUILD_TRUE@@LIBUSB01_BUILD_FALSE@am__append_7 = io/hpmud/musb.c 
 @HPLIP_BUILD_TRUE@@LIBUSB01_BUILD_FALSE@am__append_8 = -I/usr/include/libusb-1.0
-@HPLIP_BUILD_TRUE@@LIBUSB01_BUILD_FALSE@am__append_9 = -lusb-1.0
+@HPLIP_BUILD_TRUE@@LIBUSB01_BUILD_FALSE@am__append_9 = -lusb
 @HPLIP_BUILD_TRUE@@NETWORK_BUILD_TRUE@am__append_10 = -Iprotocol/discovery
 @HPLIP_BUILD_TRUE@@NETWORK_BUILD_TRUE@am__append_11 = -l$(SNMPLIB) -lcrypto
 @FULL_BUILD_TRUE@@HPLIP_BUILD_TRUE@am__append_12 =  \
@@ -2640,7 +2640,7 @@ CXXDEPMODE = @CXXDEPMODE@
 CXXFLAGS = @CXXFLAGS@ -DCONFDIR=\"$(hplip_confdir)\"
 CYGPATH_W = @CYGPATH_W@
 DBUS_CFLAGS = @DBUS_CFLAGS@
-DBUS_LIBS = @DBUS_LIBS@
+DBUS_LIBS = -ldbus
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DLLTOOL = @DLLTOOL@
@@ -4705,7 +4705,7 @@ cups_drv = prnt/drv/hpcups.drv
 @HPLIP_BUILD_TRUE@libhpmud_la_CFLAGS = -DMUDNAME=\"$(MUDNAME)\" \
 @HPLIP_BUILD_TRUE@	-DCONFDIR=\"$(hplip_confdir)\" -Iprotocol \
 @HPLIP_BUILD_TRUE@	$(am__append_8) $(am__append_10)
-@HPLIP_BUILD_TRUE@libhpmud_la_LDFLAGS = -version-info 0:6:0 -lpthread \
+@HPLIP_BUILD_TRUE@libhpmud_la_LDFLAGS = -version-info 0:6:0 -lc \
 @HPLIP_BUILD_TRUE@	-ldl $(am__append_6) $(am__append_9) \
 @HPLIP_BUILD_TRUE@	$(am__append_11)
 @HPLIP_BUILD_TRUE@libhpmud_la_SOURCES = io/hpmud/hpmud.c \

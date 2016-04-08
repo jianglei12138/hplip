@@ -5,7 +5,7 @@
 #include <errno.h>
 #include <stdlib.h>
 
-extern int errno;
+//extern int errno;
 
 static int GetPair(char *buf, int buf_len, char *key, char *value, char **tail)
 {

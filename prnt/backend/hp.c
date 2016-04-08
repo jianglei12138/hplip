@@ -341,11 +341,19 @@ bugout:
    return stat;
 }
 
+void handle_quit(int signo)
+{
+    pthread_exit(NULL);
+}
+
+
 static void pjl_read_thread(struct pjl_attributes *pa)
 {
    enum HPMUD_RESULT stat;
    int len, new_status, new_eoj;
    char buf[1024];
+
+   signal(SIGUSR1,handle_quit);
    
    pthread_detach(pthread_self());
 
@@ -986,7 +994,12 @@ bugout:
       while (!pa.done)
          pthread_cond_wait(&pa.done_cond, &pa.mutex);
       pthread_mutex_unlock(&pa.mutex);
-      pthread_cancel(pa.tid);   
+      //pthread_cancel(pa.tid);   
+      int status;
+      if ( (status = pthread_kill(pa.tid, SIGUSR1)) != 0)   
+	  {   
+        printf("Error cancelling thread %d", pa.tid);  
+	  }   
       pthread_mutex_destroy(&pa.mutex);
       pthread_cond_destroy(&pa.done_cond);
    }
