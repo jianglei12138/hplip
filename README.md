@@ -156,7 +156,33 @@ void handle_quit(int sign)
 }
 ```
 
-###### 10.编译getdomainname未定义
+###### 10.生成动态库包涵版本后缀
+
+修改configure后的libtool文件，修改：
+
+```shell
+# List of archive names.  First name is the real one, the rest are links.
+# The last name is the one that the linker finds with -lNAME
+library_names_spec="\${libname}\${release}\${shared_ext}\$versuffix \${libname}\${release}\${shared_ext}\$major \$libname\${shared_ext}"
+
+# The coded name of the library, if different from the real name.
+soname_spec="\${libname}\${release}\${shared_ext}\$major"
+```
+
+改为，去除版本信息：
+
+```shell
+# List of archive names.  First name is the real one, the rest are links.
+# The last name is the one that the linker finds with -lNAME
+library_names_spec="\${libname}.so"
+
+# The coded name of the library, if different from the real name.
+soname_spec="\${libname}.so"
+```
+
+
+
+###### 11.编译getdomainname未定义
 
 修改prnt/hpcups/HPCupsFilter.cpp添加getdomainname函数
 
